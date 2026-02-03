@@ -83,12 +83,24 @@ export default async function (req: VercelRequest, res: VercelResponse) {
         ? req.query.range
         : "A:Z";
 
+    // 1) Dados do range
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range,
     });
 
-    return res.status(200).json({ values: response.data.values || [] });
+    // 2) ✅ Data real de última modificação do arquivo (Drive)
+    const drive = google.drive({ version: "v3", auth });
+    const file = await drive.files.get({
+      fileId: spreadsheetId,
+      fields: "modifiedTime",
+      supportsAllDrives: true, // importante para Drive Compartilhado
+    });
+
+    return res.status(200).json({
+      values: response.data.values || [],
+      updatedAt: file.data.modifiedTime || null,
+    });
   } catch (err: any) {
     console.error("Sheets API error:", err);
     return res.status(500).json({
