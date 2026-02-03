@@ -4,40 +4,28 @@ const API_BASE = import.meta.env.VITE_SHEETS_API_BASE || "/api";
 export async function getCatalogo(range = "catalogo!A:K") {
   const url = `${API_BASE}/sheets?range=${encodeURIComponent(range)}`;
   const res = await fetch(url);
+
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     throw new Error(`Falha ao buscar catálogo (${res.status}): ${t}`);
   }
-  return res.json();
+
+  return res.json() as Promise<{ values: any[][] }>;
 }
 
-/**
- * Compatível:
- * - getIndicador("acolhidos", "A:Z")
- * - getIndicador("acolhidos!A:Z")
- */
 export async function getIndicador(a: string, b?: string) {
   const finalRange = b ? `${a}!${b}` : a;
   const url = `${API_BASE}/sheets?range=${encodeURIComponent(finalRange)}`;
   const res = await fetch(url);
+
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     throw new Error(`Falha ao buscar indicador (${res.status}): ${t}`);
   }
-  return res.json();
+
+  return res.json() as Promise<{ values: any[][] }>;
 }
 
 export async function getIndicadorSheet(aba: string) {
   return getIndicador(aba, "A:Z");
-}
-
-export async function getUpdatedAt(): Promise<string> {
-  const url = `${API_BASE}/sheets/updated-at`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(`Falha ao buscar updated-at (${res.status}): ${t}`);
-  }
-  const data = await res.json();
-  return data.modifiedTime;
 }
