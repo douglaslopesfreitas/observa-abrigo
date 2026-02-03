@@ -1,48 +1,39 @@
-import { google } from "googleapis";
+/**
+ * Funções para buscar dados da API serverless (/api/sheets)
+ */
 
-export default async function handler(req: any, res: any) {
+type SheetsResponse = {
+  values: any[][];
+};
+
+export const getIndicador = async (range: string): Promise<SheetsResponse> => {
   try {
-    const rawCreds = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-    const spreadsheetId = process.env.SPREADSHEET_ID;
+    const qs = new URLSearchParams({ range });
+    const response = await fetch(`/api/sheets?${qs.toString()}`);
 
-    if (!rawCreds || !spreadsheetId) {
-      return res.status(500).json({ error: "Missing env vars: Check SPREADSHEET_ID and GOOGLE_SERVICE_ACCOUNT_JSON" });
+    if (!response.ok) {
+      throw new Error("Erro ao buscar indicador da planilha");
     }
 
-    // O .trim() remove espaços em branco invisíveis no início e no fim que causam o erro de parse
-    const credentials = JSON.parse(rawCreds.trim());
-
-    // Corrige a private_key quando ela vem com \\n (comum no ambiente da Vercel)
-    const fixedPrivateKey =
-      typeof credentials.private_key === "string"
-        ? credentials.private_key.replace(/\\n/g, "\n")
-        : credentials.private_key;
-
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: credentials.client_email,
-        private_key: fixedPrivateKey,
-      },
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-    });
-
-    const sheets = google.sheets({ version: "v4", auth });
-
-    // Pega o range da query ou usa um padrão
-    const range = String(req.query?.range || "").trim() || "A1:Z1000";
-
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range,
-    });
-
-    // Retorna os dados da planilha
-    return res.status(200).json({ values: response.data.values || [] });
-  } catch (err: any) {
-    console.error("Erro na API de Sheets:", err);
-    return res.status(500).json({ 
-      error: "Internal error", 
-      details: err?.message || "Unknown error" 
-    });
+    return await response.json();
+  } catch (error) {
+    console.error("Erro no getIndicador:", error);
+    throw error;
   }
-}
+};
+
+export const getUpdatedAt = async () => {
+  try {
+    const response = await fetch("/api/sheets");
+
+    if (!response.ok) {
+      throw new Error("Erro ao buscar dados da planilha");
+    }
+
+    const data = await response.json();
+    return data.values;
+  } catch (error) {
+    console.error("Erro no serviço de sheets:", error);
+    return null;
+  }
+};
