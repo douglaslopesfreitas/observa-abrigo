@@ -6,34 +6,65 @@ type SheetsResponse = {
   values: any[][];
 };
 
+async function fetchSheets(range?: string): Promise<SheetsResponse> {
+  const qs = range ? `?${new URLSearchParams({ range }).toString()}` : "";
+  const response = await fetch(`/api/sheets${qs}`);
+
+  if (!response.ok) {
+    throw new Error("Erro ao buscar dados da planilha");
+  }
+
+  return await response.json();
+}
+
+/**
+ * Busca um range especifico, ex: "catalogo!A:K" ou "acolhidos!A:Z"
+ */
 export const getIndicador = async (range: string): Promise<SheetsResponse> => {
   try {
-    const qs = new URLSearchParams({ range });
-    const response = await fetch(`/api/sheets?${qs.toString()}`);
-
-    if (!response.ok) {
-      throw new Error("Erro ao buscar indicador da planilha");
-    }
-
-    return await response.json();
+    return await fetchSheets(range);
   } catch (error) {
     console.error("Erro no getIndicador:", error);
     throw error;
   }
 };
 
+/**
+ * Alias para deixar o nome mais claro quando for catalogo
+ */
+export const getCatalogo = async (range = "catalogo!A:K"): Promise<SheetsResponse> => {
+  try {
+    return await fetchSheets(range);
+  } catch (error) {
+    console.error("Erro no getCatalogo:", error);
+    throw error;
+  }
+};
+
+/**
+ * Busca uma sheet inteira com range padrao A:Z
+ * Ex: getIndicadorSheet("acolhidos") -> "acolhidos!A:Z"
+ */
+export const getIndicadorSheet = async (sheetName: string): Promise<SheetsResponse> => {
+  try {
+    const sheet = String(sheetName || "").trim();
+    if (!sheet) throw new Error("sheetName vazio em getIndicadorSheet");
+    return await fetchSheets(`${sheet}!A:Z`);
+  } catch (error) {
+    console.error("Erro no getIndicadorSheet:", error);
+    throw error;
+  }
+};
+
+/**
+ * Mantem compatibilidade com o footer se voce estiver usando isso
+ */
 export const getUpdatedAt = async () => {
   try {
-    const response = await fetch("/api/sheets");
-
-    if (!response.ok) {
-      throw new Error("Erro ao buscar dados da planilha");
-    }
-
-    const data = await response.json();
+    const data = await fetchSheets();
     return data.values;
   } catch (error) {
-    console.error("Erro no serviço de sheets:", error);
+    console.error("Erro no getUpdatedAt:", error);
     return null;
   }
 };
