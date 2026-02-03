@@ -1,43 +1,70 @@
 import { google } from "googleapis";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-export default async function (
-  req: VercelRequest,
-  res: VercelResponse
-) {
+function tryParseJson(s: string) {
   try {
-    // 🔐 Credenciais em Base64
-    const rawB64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64;
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+}
+
+function decodeB64ToUtf8(b64: string) {
+  return Buffer.from(b64, "base64").toString("utf8");
+}
+
+function getCredentialsFromEnv(raw: string) {
+  const trimmed = (raw || "").trim();
+
+  // 1) Talvez já seja JSON direto
+  const asJson = tryParseJson(trimmed);
+  if (asJson) return asJson;
+
+  // 2) Base64 uma vez
+  const once = decodeB64ToUtf8(trimmed);
+  const onceJson = tryParseJson(once.trim());
+  if (onceJson) return onceJson;
+
+  // 3) Base64 duas vezes (quando colam base64 do base64)
+  const twice = decodeB64ToUtf8(once.trim());
+  const twiceJson = tryParseJson(twice.trim());
+  if (twiceJson) return twiceJson;
+
+  // Falhou tudo
+  const preview = once.trim().slice(0, 40);
+  throw new Error(
+    `Credenciais invalidas. Nao consegui interpretar como JSON. Preview apos decode: "${preview}..."`
+  );
+}
+
+export default async function (req: VercelRequest, res: VercelResponse) {
+  try {
+    const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64;
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
-    if (!rawB64 || !spreadsheetId) {
+    if (!raw || !spreadsheetId) {
       return res.status(500).json({
         error: "Missing env vars",
         hasSpreadsheetId: Boolean(spreadsheetId),
-        hasServiceAccountB64: Boolean(rawB64),
+        hasServiceAccountB64: Boolean(raw),
       });
     }
 
-    // Decodifica o JSON da Service Account
-    const credentials = JSON.parse(
-      Buffer.from(rawB64, "base64").toString("utf8")
-    );
+    const credentials = getCredentialsFromEnv(raw);
 
-    if (!credentials.client_email || !credentials.private_key) {
+    if (!credentials?.client_email || !credentials?.private_key) {
       return res.status(500).json({
         error: "Invalid service account JSON",
-        hasClientEmail: Boolean(credentials.client_email),
-        hasPrivateKey: Boolean(credentials.private_key),
+        hasClientEmail: Boolean(credentials?.client_email),
+        hasPrivateKey: Boolean(credentials?.private_key),
       });
     }
 
-    // Corrige quebras de linha da private_key
     const privateKey =
       typeof credentials.private_key === "string"
         ? credentials.private_key.replace(/\\n/g, "\n")
         : credentials.private_key;
 
-    // Auth Google
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: credentials.client_email,
@@ -51,7 +78,6 @@ export default async function (
 
     const sheets = google.sheets({ version: "v4", auth });
 
-    // Range vindo por query (?range=sheet!A:Z)
     const range =
       typeof req.query.range === "string" && req.query.range
         ? req.query.range
@@ -62,9 +88,7 @@ export default async function (
       range,
     });
 
-    return res.status(200).json({
-      values: response.data.values || [],
-    });
+    return res.status(200).json({ values: response.data.values || [] });
   } catch (err: any) {
     console.error("Sheets API error:", err);
     return res.status(500).json({
