@@ -1,30 +1,31 @@
-const API_BASE = "/api";
 
-export async function getCatalogo(range = "catalogo!A:K") {
-  const url = `${API_BASE}/sheets?range=${encodeURIComponent(range)}`;
-  const res = await fetch(url);
+/**
+ * Função para buscar os dados da nossa API Serverless na Vercel
+ * e retornar a última atualização ou os dados brutos.
+ */
+export const getUpdatedAt = async () => {
+  try {
+    // Chamamos a rota que criamos na pasta /api/sheets
+    const response = await fetch('/api/sheets');
+    
+    if (!response.ok) {
+      throw new Error('Erro ao buscar dados da planilha');
+    }
 
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(`Falha ao buscar catálogo (${res.status}): ${t}`);
+    const data = await response.json();
+
+    // Aqui retornamos os dados. 
+    // Se o seu DashboardFooter espera uma data específica, 
+    // você pode ajustar o retorno abaixo:
+    return data.values; 
+  } catch (error) {
+    console.error("Erro no serviço de sheets:", error);
+    return null;
   }
+};
 
-  return res.json() as Promise<{ values: any[][] }>;
-}
-
-export async function getIndicador(a: string, b?: string) {
-  const finalRange = b ? `${a}!${b}` : a;
-  const url = `${API_BASE}/sheets?range=${encodeURIComponent(finalRange)}`;
-  const res = await fetch(url);
-
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(`Falha ao buscar indicador (${res.status}): ${t}`);
-  }
-
-  return res.json() as Promise<{ values: any[][] }>;
-}
-
-export function getIndicadorSheet(aba: string) {
-  return getIndicador(aba, "A:Z");
-}
+/**
+ * Se você tiver outras funções que o dashboard usa, 
+ * como buscar categorias ou valores específicos, adicione-as abaixo
+ * sempre usando o 'export const'.
+ */
