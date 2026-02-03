@@ -9,17 +9,12 @@ type SheetsResponse = {
 async function fetchSheets(range?: string): Promise<SheetsResponse> {
   const qs = range ? `?${new URLSearchParams({ range }).toString()}` : "";
   const response = await fetch(`/api/sheets${qs}`);
-
   if (!response.ok) {
     throw new Error("Erro ao buscar dados da planilha");
   }
-
   return await response.json();
 }
 
-/**
- * Busca um range especifico, ex: "catalogo!A:K" ou "acolhidos!A:Z"
- */
 export const getIndicador = async (range: string): Promise<SheetsResponse> => {
   try {
     return await fetchSheets(range);
@@ -29,9 +24,6 @@ export const getIndicador = async (range: string): Promise<SheetsResponse> => {
   }
 };
 
-/**
- * Alias para deixar o nome mais claro quando for catalogo
- */
 export const getCatalogo = async (
   range = "catalogo!A:K"
 ): Promise<SheetsResponse> => {
@@ -43,10 +35,6 @@ export const getCatalogo = async (
   }
 };
 
-/**
- * Busca uma sheet inteira com range padrao A:Z
- * Ex: getIndicadorSheet("acolhidos") -> "acolhidos!A:Z"
- */
 export const getIndicadorSheet = async (
   sheetName: string
 ): Promise<SheetsResponse> => {
@@ -60,9 +48,6 @@ export const getIndicadorSheet = async (
   }
 };
 
-/**
- * Retorna a data real de última alteração da planilha (Drive.modifiedTime)
- */
 export const getUpdatedAt = async (): Promise<string | null> => {
   try {
     const data = await fetchSheets();

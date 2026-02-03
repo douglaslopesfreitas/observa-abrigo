@@ -27,7 +27,7 @@ type CatalogRow = {
   unidade?: string;
   territorio_col?: string;
 };
-const PRIMARY_COLOR = '#359AD4'
+const PRIMARY_COLOR = "#359AD4";
 
 const CHART_COLORS = [
   "#2674a0",
@@ -194,6 +194,7 @@ export function IndicatorResults({
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<ParsedRow[]>([]);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null); // ✅ novo
 
   const meta = useMemo(() => {
     if (!filters.indicador) return null;
@@ -220,6 +221,9 @@ export function IndicatorResults({
 
         const data = await getIndicador(range);
         const values: any[][] = data.values || [];
+
+        // ✅ vem da API: _meta!B1
+        setUpdatedAt(typeof data.updatedAt === "string" ? data.updatedAt : null);
 
         if (values.length < 2) {
           setRows([]);
@@ -290,28 +294,37 @@ export function IndicatorResults({
   const fotografiaAtual = useMemo(() => {
     if (!lastDate) return null;
 
-    // Preferência: pegar "Em todos os acolhimentos" SE tiver número válido
-    const totalRow = filtered.find((r) => r.data === lastDate && r.modalidade === TOTAL_LABEL);
+    const totalRow = filtered.find(
+      (r) => r.data === lastDate && r.modalidade === TOTAL_LABEL
+    );
 
     const total =
       totalRow && typeof totalRow.valor === "number"
         ? totalRow.valor
         : sumVals(
             filtered
-              .filter((r) => r.data === lastDate && r.modalidade && r.modalidade !== TOTAL_LABEL)
+              .filter(
+                (r) =>
+                  r.data === lastDate &&
+                  r.modalidade &&
+                  r.modalidade !== TOTAL_LABEL
+              )
               .map((r) => r.valor)
           );
 
-    // Monta dados para gráfico da foto (modalidades no último período)
     const byMod = new Map<string, number>();
     filtered
-      .filter((r) => r.data === lastDate && r.modalidade && r.modalidade !== TOTAL_LABEL)
+      .filter(
+        (r) =>
+          r.data === lastDate &&
+          r.modalidade &&
+          r.modalidade !== TOTAL_LABEL
+      )
       .forEach((r) => {
         const v = typeof r.valor === "number" ? r.valor : 0;
         byMod.set(r.modalidade, (byMod.get(r.modalidade) || 0) + v);
       });
 
-    // remove modalidades com valor 0 nessa data
     const fotoData = Array.from(byMod.entries())
       .filter(([, v]) => v > 0)
       .map(([name, value]) => ({ name, value }))
@@ -328,7 +341,9 @@ export function IndicatorResults({
   const lineData = useMemo(() => {
     if (!dates.length) return [];
     return dates.map((d) => {
-      const totalRow = filtered.find((r) => r.data === d && r.modalidade === TOTAL_LABEL);
+      const totalRow = filtered.find(
+        (r) => r.data === d && r.modalidade === TOTAL_LABEL
+      );
 
       const total =
         totalRow && typeof totalRow.valor === "number"
@@ -343,72 +358,68 @@ export function IndicatorResults({
     });
   }, [dates, filtered]);
 
-  // ===== Composição: empilhado por DATA (não por ano) + inclui TOTAL sem duplicar =====
+  // ===== Composição =====
   const stacked = useMemo(() => {
-  if (!dates.length) return { data: [] as any[], keys: [] as string[] };
+    if (!dates.length) return { data: [] as any[], keys: [] as string[] };
 
-  // Mantém modalidades "normais" que aparecem com >0 em algum momento
-  const keptMods = modalities.filter((m) =>
-    filtered.some((r) => r.modalidade === m && (r.valor || 0) > 0)
-  );
-
-  // Keys incluem TOTAL primeiro
-  const sortedMods = [...keptMods].sort((a, b) => {
-  const sumA = filtered
-    .filter((r) => r.modalidade === a)
-    .reduce((acc, r) => acc + (r.valor || 0), 0);
-
-  const sumB = filtered
-    .filter((r) => r.modalidade === b)
-    .reduce((acc, r) => acc + (r.valor || 0), 0);
-
-  return sumA - sumB; // menor primeiro (fica embaixo)
-});
-  const keys = [TOTAL_LABEL, ... sortedMods];
-
-  const byDate = new Map<string, any>();
-
-  dates.forEach((d) => {
-    if (!d) return;
-
-    if (!byDate.has(d)) byDate.set(d, { date: d });
-    const obj = byDate.get(d);
-
-    // inicializa chaves com 0
-    keys.forEach((k) => {
-      if (obj[k] == null) obj[k] = 0;
-    });
-
-    const rowsOnDate = filtered.filter((r) => r.data === d);
-
-    // Se houver detalhamento nessa data, ignora TOTAL para não duplicar
-    const hasBreakdown = rowsOnDate.some(
-      (r) =>
-        r.modalidade &&
-        r.modalidade !== TOTAL_LABEL &&
-        typeof r.valor === "number" &&
-        r.valor > 0
+    const keptMods = modalities.filter((m) =>
+      filtered.some((r) => r.modalidade === m && (r.valor || 0) > 0)
     );
 
-    rowsOnDate.forEach((r) => {
-      if (!r.modalidade) return;
-      if (hasBreakdown && r.modalidade === TOTAL_LABEL) return;
-      if (!keys.includes(r.modalidade)) return;
+    const sortedMods = [...keptMods].sort((a, b) => {
+      const sumA = filtered
+        .filter((r) => r.modalidade === a)
+        .reduce((acc, r) => acc + (r.valor || 0), 0);
 
-      const v = typeof r.valor === "number" ? r.valor : 0;
-      obj[r.modalidade] = (obj[r.modalidade] || 0) + v;
+      const sumB = filtered
+        .filter((r) => r.modalidade === b)
+        .reduce((acc, r) => acc + (r.valor || 0), 0);
+
+      return sumA - sumB;
     });
 
-    // ✅ aqui é o que faltava: topo real da coluna nessa data
-    // prioridade: achar o último key com valor > 0 (o topo do empilhado)
-    const topKey = [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
-    obj.__top = topKey;
-  });
+    const keys = [TOTAL_LABEL, ...sortedMods];
 
-  const data = dates.map((d) => byDate.get(d)).filter(Boolean);
+    const byDate = new Map<string, any>();
 
-  return { data, keys };
-}, [dates, filtered, modalities]);
+    dates.forEach((d) => {
+      if (!d) return;
+
+      if (!byDate.has(d)) byDate.set(d, { date: d });
+      const obj = byDate.get(d);
+
+      keys.forEach((k) => {
+        if (obj[k] == null) obj[k] = 0;
+      });
+
+      const rowsOnDate = filtered.filter((r) => r.data === d);
+
+      const hasBreakdown = rowsOnDate.some(
+        (r) =>
+          r.modalidade &&
+          r.modalidade !== TOTAL_LABEL &&
+          typeof r.valor === "number" &&
+          r.valor > 0
+      );
+
+      rowsOnDate.forEach((r) => {
+        if (!r.modalidade) return;
+        if (hasBreakdown && r.modalidade === TOTAL_LABEL) return;
+        if (!keys.includes(r.modalidade)) return;
+
+        const v = typeof r.valor === "number" ? r.valor : 0;
+        obj[r.modalidade] = (obj[r.modalidade] || 0) + v;
+      });
+
+      const topKey =
+        [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
+      obj.__top = topKey;
+    });
+
+    const data = dates.map((d) => byDate.get(d)).filter(Boolean);
+
+    return { data, keys };
+  }, [dates, filtered, modalities]);
 
   if (!filters.indicador) return null;
 
@@ -418,14 +429,20 @@ export function IndicatorResults({
         {/* Header + botões */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <h3 className="section-title">{meta?.titulo || meta?.indicador_nome || "Indicador"}</h3>
+            <h3 className="section-title">
+              {meta?.titulo || meta?.indicador_nome || "Indicador"}
+            </h3>
 
             {loading ? (
-              <div className="text-sm text-muted-foreground mt-1">Carregando dados...</div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Carregando dados...
+              </div>
             ) : null}
 
             {err ? (
-              <div className="text-sm text-destructive mt-1">Erro ao carregar indicador: {err}</div>
+              <div className="text-sm text-destructive mt-1">
+                Erro ao carregar indicador: {err}
+              </div>
             ) : null}
           </div>
 
@@ -479,22 +496,39 @@ export function IndicatorResults({
               </div>
 
               {meta?.unidade ? (
-                <div className="text-sm text-muted-foreground mt-1">{meta.unidade}</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {meta.unidade}
+                </div>
               ) : null}
             </div>
 
+            {/* ✅ NOVO: atualizado em (vem de _meta!B1) */}
+            <div className="text-xs text-muted-foreground mt-2">
+              Atualizado em:{" "}
+              <span>
+                {updatedAt ? formatDateBR(String(updatedAt).slice(0, 10)) : "-"}
+              </span>
+            </div>
+
             <div className="h-80 mt-6">
-              {!fotografiaAtual?.fotoData || fotografiaAtual.fotoData.length === 0 ? (
+              {!fotografiaAtual?.fotoData ||
+              fotografiaAtual.fotoData.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                   Sem dados de modalidades para exibir na fotografia atual
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={fotografiaAtual.fotoData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                    />
                     <XAxis
                       dataKey="name"
-                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      tick={{
+                        fontSize: 11,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                       interval={0}
                       angle={-15}
@@ -502,7 +536,10 @@ export function IndicatorResults({
                       height={60}
                     />
                     <YAxis
-                      tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                      tick={{
+                        fontSize: 12,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                     />
                     <Tooltip
@@ -516,7 +553,11 @@ export function IndicatorResults({
                         meta?.unidade || "valor",
                       ]}
                     />
-                    <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[8, 8, 0, 0]} />
+                    <Bar
+                      dataKey="value"
+                      fill={PRIMARY_COLOR}
+                      radius={[8, 8, 0, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -524,7 +565,7 @@ export function IndicatorResults({
           </>
         )}
 
-        {/* ====== Evolução: SÓ GRÁFICO (sem referência embaixo) ====== */}
+        {/* ====== Evolução ====== */}
         {view === "evolucao" && (
           <div className="h-80 mt-6">
             {lineData.length === 0 ? (
@@ -534,15 +575,24 @@ export function IndicatorResults({
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={lineData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{
+                      fontSize: 12,
+                      fill: "hsl(var(--muted-foreground))",
+                    }}
                     axisLine={{ stroke: "hsl(var(--border))" }}
                     tickFormatter={(v) => formatDateBR(String(v))}
                   />
                   <YAxis
-                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{
+                      fontSize: 12,
+                      fill: "hsl(var(--muted-foreground))",
+                    }}
                     axisLine={{ stroke: "hsl(var(--border))" }}
                   />
                   <Tooltip
@@ -572,7 +622,7 @@ export function IndicatorResults({
           </div>
         )}
 
-        {/* ====== Composição: empilhado por DATA + Tooltip sem zeros (sem referência embaixo) ====== */}
+        {/* ====== Composição ====== */}
         {view === "composicao" && (
           <div className="h-96 mt-6">
             {stacked.data.length === 0 || stacked.keys.length === 0 ? (
@@ -582,60 +632,70 @@ export function IndicatorResults({
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stacked.data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{
+                      fontSize: 12,
+                      fill: "hsl(var(--muted-foreground))",
+                    }}
                     axisLine={{ stroke: "hsl(var(--border))" }}
                     tickFormatter={(v) => formatDateBR(String(v))}
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{
+                      fontSize: 12,
+                      fill: "hsl(var(--muted-foreground))",
+                    }}
                     axisLine={{ stroke: "hsl(var(--border))" }}
                   />
                   <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
-                    {stacked.keys.map((k, i) => (
-  <Bar
-    key={k}
-    dataKey={k}
-    stackId="a"
-    fill={CHART_COLORS[i % CHART_COLORS.length]}
-    isAnimationActive={false}
-    shape={(props: any) => {
-  const { x, y, width, height, fill, payload } = props;
+                  {stacked.keys.map((k, i) => (
+                    <Bar
+                      key={k}
+                      dataKey={k}
+                      stackId="a"
+                      fill={CHART_COLORS[i % CHART_COLORS.length]}
+                      isAnimationActive={false}
+                      shape={(props: any) => {
+                        const { x, y, width, height, fill, payload } = props;
 
-  // não desenha se não tem área
-  if (!width || !height || height <= 0) return null;
+                        if (!width || !height || height <= 0) return null;
 
-  const isTop = payload?.__top === k;
+                        const isTop = payload?.__top === k;
+                        const R = 8;
+                        const r = isTop ? Math.min(R, width / 2, height / 2) : 0;
 
-  // raio desejado
-  const R = 8;
+                        if (!r) {
+                          return (
+                            <rect
+                              x={x}
+                              y={y}
+                              width={width}
+                              height={height}
+                              fill={fill}
+                            />
+                          );
+                        }
 
-  // limita o raio para não virar "pílula" quando a barra é pequena
-  const r = isTop ? Math.min(R, width / 2, height / 2) : 0;
+                        const d = `
+                          M ${x} ${y + r}
+                          Q ${x} ${y} ${x + r} ${y}
+                          L ${x + width - r} ${y}
+                          Q ${x + width} ${y} ${x + width} ${y + r}
+                          L ${x + width} ${y + height}
+                          L ${x} ${y + height}
+                          Z
+                        `;
 
-  // se não é o topo, desenha retângulo normal
-  if (!r) {
-    return <rect x={x} y={y} width={width} height={height} fill={fill} />;
-  }
-
-  // path com cantos de cima arredondados e base reta
-  const d = `
-    M ${x} ${y + r}
-    Q ${x} ${y} ${x + r} ${y}
-    L ${x + width - r} ${y}
-    Q ${x + width} ${y} ${x + width} ${y + r}
-    L ${x + width} ${y + height}
-    L ${x} ${y + height}
-    Z
-  `;
-
-  return <path d={d} fill={fill} />;
-}}
-  />
-))}
+                        return <path d={d} fill={fill} />;
+                      }}
+                    />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             )}

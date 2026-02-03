@@ -16,16 +16,13 @@ function decodeB64ToUtf8(b64: string) {
 function getCredentialsFromEnv(raw: string) {
   const trimmed = (raw || "").trim();
 
-  // Caso 1: já é JSON direto
   const asJson = tryParseJson(trimmed);
   if (asJson) return asJson;
 
-  // Caso 2: Base64 uma vez
   const once = decodeB64ToUtf8(trimmed);
   const onceJson = tryParseJson(once.trim());
   if (onceJson) return onceJson;
 
-  // Caso 3: Base64 duas vezes (quando colam base64 do base64)
   const twice = decodeB64ToUtf8(once.trim());
   const twiceJson = tryParseJson(twice.trim());
   if (twiceJson) return twiceJson;
@@ -61,7 +58,6 @@ export default async function (req: VercelRequest, res: VercelResponse) {
         ? credentials.private_key.replace(/\\n/g, "\n")
         : credentials.private_key;
 
-    // ✅ Impersonação obrigatória quando Domain-wide delegation está ativa
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: credentials.client_email,
@@ -83,23 +79,28 @@ export default async function (req: VercelRequest, res: VercelResponse) {
         ? req.query.range
         : "A:Z";
 
-    // 1) Dados do range
-    const response = await sheets.spreadsheets.values.get({
+    // 1) Dados do range solicitado
+    const valuesResp = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range,
     });
 
-    // 2) ✅ Data real de última modificação do arquivo (Drive)
-    const drive = google.drive({ version: "v3", auth });
-    const file = await drive.files.get({
-      fileId: spreadsheetId,
-      fields: "modifiedTime",
-      supportsAllDrives: true, // importante para Drive Compartilhado
-    });
+    // 2) Data controlada por você (só muda quando mexe em "acolhidos")
+    let updatedAt: string | null = null;
+    try {
+      const metaResp = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "_meta!B1:B1",
+      });
+      const v = metaResp.data.values?.[0]?.[0];
+      updatedAt = v ? String(v) : null;
+    } catch {
+      updatedAt = null;
+    }
 
     return res.status(200).json({
-      values: response.data.values || [],
-      updatedAt: file.data.modifiedTime || null,
+      values: valuesResp.data.values || [],
+      updatedAt,
     });
   } catch (err: any) {
     console.error("Sheets API error:", err);
