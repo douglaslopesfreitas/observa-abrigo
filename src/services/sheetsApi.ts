@@ -1,31 +1,39 @@
-
 /**
- * Função para buscar os dados da nossa API Serverless na Vercel
- * e retornar a última atualização ou os dados brutos.
+ * Funções para buscar dados da API serverless (/api/sheets)
  */
+
+type SheetsResponse = {
+  values: any[][];
+};
+
+export const getIndicador = async (range: string): Promise<SheetsResponse> => {
+  try {
+    const qs = new URLSearchParams({ range });
+    const response = await fetch(`/api/sheets?${qs.toString()}`);
+
+    if (!response.ok) {
+      throw new Error("Erro ao buscar indicador da planilha");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Erro no getIndicador:", error);
+    throw error;
+  }
+};
+
 export const getUpdatedAt = async () => {
   try {
-    // Chamamos a rota que criamos na pasta /api/sheets
-    const response = await fetch('/api/sheets');
-    
+    const response = await fetch("/api/sheets");
+
     if (!response.ok) {
-      throw new Error('Erro ao buscar dados da planilha');
+      throw new Error("Erro ao buscar dados da planilha");
     }
 
     const data = await response.json();
-
-    // Aqui retornamos os dados. 
-    // Se o seu DashboardFooter espera uma data específica, 
-    // você pode ajustar o retorno abaixo:
-    return data.values; 
+    return data.values;
   } catch (error) {
     console.error("Erro no serviço de sheets:", error);
     return null;
   }
 };
-
-/**
- * Se você tiver outras funções que o dashboard usa, 
- * como buscar categorias ou valores específicos, adicione-as abaixo
- * sempre usando o 'export const'.
- */
