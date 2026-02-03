@@ -9,7 +9,6 @@ import {
   Tooltip,
   BarChart,
   Bar,
-  Legend,
 } from "recharts";
 import type { FilterState } from "@/types/dashboard";
 import { getIndicador } from "@/services/sheetsApi";
@@ -27,6 +26,7 @@ type CatalogRow = {
   unidade?: string;
   territorio_col?: string;
 };
+
 const PRIMARY_COLOR = "#359AD4";
 
 const CHART_COLORS = [
@@ -194,7 +194,9 @@ export function IndicatorResults({
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<ParsedRow[]>([]);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null); // ✅ novo
+
+  // ✅ data de atualização (vem de _meta!B1)
+  const [updatedAtBR, setUpdatedAtBR] = useState<string | null>(null);
 
   const meta = useMemo(() => {
     if (!filters.indicador) return null;
@@ -219,11 +221,19 @@ export function IndicatorResults({
             ? meta.range
             : `${meta.sheet}!${meta.range || "A:Z"}`;
 
-        const data = await getIndicador(range);
+        // ✅ pega indicador e meta em paralelo
+        const [data, metaData] = await Promise.all([
+          getIndicador(range),
+          getIndicador("_meta!B1"),
+        ]);
+
         const values: any[][] = data.values || [];
 
-        // ✅ vem da API: _meta!B1
-        setUpdatedAt(typeof data.updatedAt === "string" ? data.updatedAt : null);
+        // metaData.values deve vir tipo [[ "03/02/2026" ]]
+        const metaValues: any[][] = metaData.values || [];
+        const b1 = metaValues?.[0]?.[0];
+        const b1Str = String(b1 ?? "").trim();
+        setUpdatedAtBR(b1Str ? b1Str : null);
 
         if (values.length < 2) {
           setRows([]);
@@ -256,6 +266,7 @@ export function IndicatorResults({
         setRows(parsed);
       } catch (e: any) {
         setRows([]);
+        setUpdatedAtBR(null);
         setErr(String(e?.message || e));
       } finally {
         setLoading(false);
@@ -290,7 +301,7 @@ export function IndicatorResults({
     return Array.from(set);
   }, [filtered]);
 
-  // ===== Fotografia atual: valor grande + gráfico por modalidade (última data) =====
+  // ===== Fotografia atual =====
   const fotografiaAtual = useMemo(() => {
     if (!lastDate) return null;
 
@@ -316,9 +327,7 @@ export function IndicatorResults({
     filtered
       .filter(
         (r) =>
-          r.data === lastDate &&
-          r.modalidade &&
-          r.modalidade !== TOTAL_LABEL
+          r.data === lastDate && r.modalidade && r.modalidade !== TOTAL_LABEL
       )
       .forEach((r) => {
         const v = typeof r.valor === "number" ? r.valor : 0;
@@ -337,7 +346,7 @@ export function IndicatorResults({
     };
   }, [filtered, lastDate]);
 
-  // ===== Evolução: total ao longo do tempo (linha) =====
+  // ===== Evolução =====
   const lineData = useMemo(() => {
     if (!dates.length) return [];
     return dates.map((d) => {
@@ -379,7 +388,6 @@ export function IndicatorResults({
     });
 
     const keys = [TOTAL_LABEL, ...sortedMods];
-
     const byDate = new Map<string, any>();
 
     dates.forEach((d) => {
@@ -485,7 +493,7 @@ export function IndicatorResults({
           </div>
         </div>
 
-        {/* ====== Fotografia atual: VALOR GRANDE + GRÁFICO ====== */}
+        {/* ====== Fotografia atual ====== */}
         {view === "foto" && (
           <>
             <div className="mt-4 rounded-xl border bg-background p-4">
@@ -502,33 +510,18 @@ export function IndicatorResults({
               ) : null}
             </div>
 
-            {/* ✅ NOVO: atualizado em (vem de _meta!B1) */}
-            <div className="text-xs text-muted-foreground mt-2">
-              Atualizado em:{" "}
-              <span>
-                {updatedAt ? formatDateBR(String(updatedAt).slice(0, 10)) : "-"}
-              </span>
-            </div>
-
             <div className="h-80 mt-6">
-              {!fotografiaAtual?.fotoData ||
-              fotografiaAtual.fotoData.length === 0 ? (
+              {!fotografiaAtual?.fotoData || fotografiaAtual.fotoData.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                   Sem dados de modalidades para exibir na fotografia atual
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={fotografiaAtual.fotoData}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="hsl(var(--border))"
-                    />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="name"
-                      tick={{
-                        fontSize: 11,
-                        fill: "hsl(var(--muted-foreground))",
-                      }}
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                       interval={0}
                       angle={-15}
@@ -536,10 +529,7 @@ export function IndicatorResults({
                       height={60}
                     />
                     <YAxis
-                      tick={{
-                        fontSize: 12,
-                        fill: "hsl(var(--muted-foreground))",
-                      }}
+                      tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                     />
                     <Tooltip
@@ -553,11 +543,7 @@ export function IndicatorResults({
                         meta?.unidade || "valor",
                       ]}
                     />
-                    <Bar
-                      dataKey="value"
-                      fill={PRIMARY_COLOR}
-                      radius={[8, 8, 0, 0]}
-                    />
+                    <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -575,24 +561,15 @@ export function IndicatorResults({
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={lineData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(var(--border))"
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="date"
-                    tick={{
-                      fontSize: 12,
-                      fill: "hsl(var(--muted-foreground))",
-                    }}
+                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                     axisLine={{ stroke: "hsl(var(--border))" }}
                     tickFormatter={(v) => formatDateBR(String(v))}
                   />
                   <YAxis
-                    tick={{
-                      fontSize: 12,
-                      fill: "hsl(var(--muted-foreground))",
-                    }}
+                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                     axisLine={{ stroke: "hsl(var(--border))" }}
                   />
                   <Tooltip
@@ -632,28 +609,20 @@ export function IndicatorResults({
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stacked.data}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(var(--border))"
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="date"
-                    tick={{
-                      fontSize: 12,
-                      fill: "hsl(var(--muted-foreground))",
-                    }}
+                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                     axisLine={{ stroke: "hsl(var(--border))" }}
                     tickFormatter={(v) => formatDateBR(String(v))}
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{
-                      fontSize: 12,
-                      fill: "hsl(var(--muted-foreground))",
-                    }}
+                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                     axisLine={{ stroke: "hsl(var(--border))" }}
                   />
                   <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
+
                   {stacked.keys.map((k, i) => (
                     <Bar
                       key={k}
@@ -663,7 +632,6 @@ export function IndicatorResults({
                       isAnimationActive={false}
                       shape={(props: any) => {
                         const { x, y, width, height, fill, payload } = props;
-
                         if (!width || !height || height <= 0) return null;
 
                         const isTop = payload?.__top === k;
@@ -671,15 +639,7 @@ export function IndicatorResults({
                         const r = isTop ? Math.min(R, width / 2, height / 2) : 0;
 
                         if (!r) {
-                          return (
-                            <rect
-                              x={x}
-                              y={y}
-                              width={width}
-                              height={height}
-                              fill={fill}
-                            />
-                          );
+                          return <rect x={x} y={y} width={width} height={height} fill={fill} />;
                         }
 
                         const d = `
@@ -691,7 +651,6 @@ export function IndicatorResults({
                           L ${x} ${y + height}
                           Z
                         `;
-
                         return <path d={d} fill={fill} />;
                       }}
                     />
@@ -725,6 +684,13 @@ export function IndicatorResults({
               Referência:{" "}
               <span>{fotografiaAtual?.data ? formatDateBR(fotografiaAtual.data) : "-"}</span>
             </div>
+
+            {/* ✅ Aqui é o lugar certo, junto do card do indicador */}
+            {updatedAtBR ? (
+              <div>
+                Atualizado em: <span>{updatedAtBR}</span>
+              </div>
+            ) : null}
           </div>
         )}
       </div>
