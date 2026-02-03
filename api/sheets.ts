@@ -16,25 +16,21 @@ function decodeB64ToUtf8(b64: string) {
 function getCredentialsFromEnv(raw: string) {
   const trimmed = (raw || "").trim();
 
-  // 1) Talvez já seja JSON direto
+  // Caso 1: já é JSON direto
   const asJson = tryParseJson(trimmed);
   if (asJson) return asJson;
 
-  // 2) Base64 uma vez
+  // Caso 2: Base64 uma vez
   const once = decodeB64ToUtf8(trimmed);
   const onceJson = tryParseJson(once.trim());
   if (onceJson) return onceJson;
 
-  // 3) Base64 duas vezes (quando colam base64 do base64)
+  // Caso 3: Base64 duas vezes (quando colam base64 do base64)
   const twice = decodeB64ToUtf8(once.trim());
   const twiceJson = tryParseJson(twice.trim());
   if (twiceJson) return twiceJson;
 
-  // Falhou tudo
-  const preview = once.trim().slice(0, 40);
-  throw new Error(
-    `Credenciais invalidas. Nao consegui interpretar como JSON. Preview apos decode: "${preview}..."`
-  );
+  throw new Error("Credenciais inválidas: não consegui interpretar como JSON.");
 }
 
 export default async function (req: VercelRequest, res: VercelResponse) {
@@ -65,6 +61,7 @@ export default async function (req: VercelRequest, res: VercelResponse) {
         ? credentials.private_key.replace(/\\n/g, "\n")
         : credentials.private_key;
 
+    // ✅ Impersonação obrigatória quando Domain-wide delegation está ativa
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: credentials.client_email,
@@ -74,6 +71,9 @@ export default async function (req: VercelRequest, res: VercelResponse) {
         "https://www.googleapis.com/auth/spreadsheets.readonly",
         "https://www.googleapis.com/auth/drive.readonly",
       ],
+      clientOptions: {
+        subject: "douglas@redeabrigo.org",
+      },
     });
 
     const sheets = google.sheets({ version: "v4", auth });
