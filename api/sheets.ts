@@ -1,66 +1,41 @@
-import { google } from "googleapis";
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { google } from 'googleapis'
 
-// Vercel serverless: req/res estilo Node
-export default async function handler(req: any, res: any) {
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+) {
   try {
-    // CORS básico
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    const rawCreds = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+    const spreadsheetId = process.env.SPREADSHEET_ID
 
-    if (req.method === "OPTIONS") {
-      return res.status(200).end();
+    if (!rawCreds || !spreadsheetId) {
+      return res.status(500).json({ error: 'Missing env vars' })
     }
 
-    if (req.method !== "GET") {
-      return res.status(405).json({ error: "Method not allowed" });
-    }
+    const credentials = JSON.parse(rawCreds)
 
-    const spreadsheetId = process.env.SPREADSHEET_ID;
-    const credsRaw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    const auth = new google.auth.JWT(
+      credentials.client_email,
+      undefined,
+      credentials.private_key,
+      ['https://www.googleapis.com/auth/spreadsheets.readonly']
+    )
 
-    if (!spreadsheetId) {
-      return res.status(500).json({ error: "Missing SPREADSHEET_ID env var" });
-    }
-    if (!credsRaw) {
-      return res
-        .status(500)
-        .json({ error: "Missing GOOGLE_SERVICE_ACCOUNT_JSON env var" });
-    }
+    const sheets = google.sheets({ version: 'v4', auth })
 
-    const range = String(req.query?.range || "").trim();
-    if (!range) {
-      return res.status(400).json({ error: "Missing range query param" });
-    }
+    const range = (req.query.range as string) || 'A1:Z1000'
 
-    // Credenciais (vem como JSON em uma linha)
-    const creds = JSON.parse(credsRaw);
-
-    // Corrige caso a private_key venha com \\n literal
-    const fixedPrivateKey =
-      typeof creds.private_key === "string"
-        ? creds.private_key.replace(/\\n/g, "\n").trim()
-        : creds.private_key;
-
-    // Forma atual do googleapis (evita o erro "Expected 0-1 arguments, but got 4")
-    const auth = new google.auth.JWT({
-      email: creds.client_email,
-      key: fixedPrivateKey,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-    });
-
-    const sheets = google.sheets({ version: "v4", auth });
-
-    const resp = await sheets.spreadsheets.values.get({
+    const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range,
-    });
+    })
 
-    return res.status(200).json({ values: resp.data.values || [] });
-  } catch (e: any) {
+    return res.status(200).json(response.data.values ?? [])
+  } catch (err: any) {
+    console.error(err)
     return res.status(500).json({
-      error: e?.message || String(e),
-      details: e?.response?.data || undefined,
-    });
+      error: err.message || 'Internal error',
+    })
   }
 }
