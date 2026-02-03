@@ -661,36 +661,41 @@ export function IndicatorResults({
           </div>
         )}
 
-        {/* Fonte e referência (só na Fotografia atual) */}
-{view === "foto" && (
-  <>
-    <div className="mt-4 text-xs text-muted-foreground space-y-1">
-      <div>
-        Fonte:{" "}
-        {meta?.fonte_url ? (
-          <a
-            href={meta.fonte_url}
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-          >
-            {meta?.fonte || "Fonte"}
-          </a>
-        ) : (
-          <span>{meta?.fonte || "Fonte"}</span>
+{/* Fonte e referência (só na Fotografia atual) */}
+        {view === "foto" && (
+          <>
+            <div className="mt-4 text-xs text-muted-foreground space-y-1">
+              <div>
+                Fonte:{" "}
+                {meta?.fonte_url ? (
+                  <a
+                    href={meta.fonte_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline underline-offset-2"
+                  >
+                    {meta?.fonte || "Fonte"}
+                  </a>
+                ) : (
+                  <span>{meta?.fonte || "Fonte"}</span>
+                )}
+              </div>
+
+              <div>
+                Referência:{" "}
+                <span>{fotografiaAtual?.data ? formatDateBR(fotografiaAtual.data) : "-"}</span>
+              </div>
+            </div>
+
+            {/* Fora do card, logo abaixo, como na foto */}
+            {updatedAtBR ? (
+              <div className="mt-3 text-xs text-muted-foreground">
+                Atualizado em: <span>{updatedAtBR}</span>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
-
-      <div>
-        Referência:{" "}
-        <span>{fotografiaAtual?.data ? formatDateBR(fotografiaAtual.data) : "-"}</span>
-      </div>
     </div>
-
-    {updatedAtBR ? (
-      <div className="mt-3 text-xs text-muted-foreground">
-        Atualizado em: <span>{updatedAtBR}</span>
-      </div>
-    ) : null}
-  </>
-)}
+  );
+}
