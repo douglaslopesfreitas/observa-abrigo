@@ -6,22 +6,38 @@ export default async function (
   res: VercelResponse
 ) {
   try {
-    const rawCreds = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    // 🔐 Credenciais em Base64
+    const rawB64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64;
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
-    if (!rawCreds || !spreadsheetId) {
+    if (!rawB64 || !spreadsheetId) {
       return res.status(500).json({
-        error: "Missing env vars: SPREADSHEET_ID or GOOGLE_SERVICE_ACCOUNT_JSON",
+        error: "Missing env vars",
+        hasSpreadsheetId: Boolean(spreadsheetId),
+        hasServiceAccountB64: Boolean(rawB64),
       });
     }
 
-    const credentials = JSON.parse(rawCreds.trim());
+    // Decodifica o JSON da Service Account
+    const credentials = JSON.parse(
+      Buffer.from(rawB64, "base64").toString("utf8")
+    );
 
+    if (!credentials.client_email || !credentials.private_key) {
+      return res.status(500).json({
+        error: "Invalid service account JSON",
+        hasClientEmail: Boolean(credentials.client_email),
+        hasPrivateKey: Boolean(credentials.private_key),
+      });
+    }
+
+    // Corrige quebras de linha da private_key
     const privateKey =
       typeof credentials.private_key === "string"
         ? credentials.private_key.replace(/\\n/g, "\n")
         : credentials.private_key;
 
+    // Auth Google
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: credentials.client_email,
@@ -35,6 +51,7 @@ export default async function (
 
     const sheets = google.sheets({ version: "v4", auth });
 
+    // Range vindo por query (?range=sheet!A:Z)
     const range =
       typeof req.query.range === "string" && req.query.range
         ? req.query.range
