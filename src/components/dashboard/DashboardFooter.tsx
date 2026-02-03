@@ -1,29 +1,22 @@
-// src/services/sheetsApi.ts
+import { useEffect, useState } from "react";
+import { getUpdatedAt } from "@/services/sheetsApi";
 
-/**
- * Busca os dados da planilha e retorna a data de atualização.
- * O componente DashboardFooter espera uma string ISO de data.
- */
-export const getUpdatedAt = async (): Promise<string> => {
-  try {
-    const response = await fetch('/api/sheets');
-    
-    if (!response.ok) {
-      throw new Error('Erro ao conectar com a API');
-    }
+export function DashboardFooter() {
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
-    const data = await response.json();
+  useEffect(() => {
+    getUpdatedAt()
+      .then((d) => setUpdatedAt(d))
+      .catch(() => setUpdatedAt(null));
+  }, []);
 
-    // Se a sua planilha tem a data de atualização em uma célula específica, 
-    // ajuste aqui. Ex: data.values[0][0] (Primeira linha, primeira coluna)
-    // Se não tiver, vamos retornar a data atual do sistema como fallback:
-    const lastDate = data.values && data.values.length > 0 
-      ? data.values[0][0] // Pega o valor da célula A1
-      : new Date().toISOString();
-
-    return lastDate;
-  } catch (error) {
-    console.error("Erro no serviço de sheets:", error);
-    throw error; // Repassa o erro para o .catch do componente
-  }
-};
+  return (
+    <footer className="mt-10 border-t py-4 text-xs text-muted-foreground">
+      {updatedAt ? (
+        <span>Última atualização: {updatedAt}</span>
+      ) : (
+        <span>Atualização indisponível</span>
+      )}
+    </footer>
+  );
+}
