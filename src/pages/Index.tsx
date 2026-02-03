@@ -3,6 +3,7 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { KPICards } from "@/components/dashboard/KPICards";
 import { OverviewCharts } from "@/components/dashboard/OverviewCharts";
 import { FilterSection } from "@/components/dashboard/FilterSection";
+import { LastUpdated } from "@/components/dashboard/LastUpdated";
 import { overviewKPIs } from "@/data/mockData";
 import type { FilterState } from "@/types/dashboard";
 import { getCatalogo, getIndicadorSheet } from "@/services/sheetsApi";
@@ -239,6 +240,11 @@ export default function Index() {
           <OverviewCharts />
         </section>
 
+        {/* ✅ Atualizado em: sempre aparece aqui, mesmo sem indicador */}
+        <section>
+          <LastUpdated />
+        </section>
+
         <section className="pt-4">
           {catalogoLoading ? (
             <div className="text-sm text-muted-foreground">Carregando catálogo...</div>
@@ -258,8 +264,6 @@ export default function Index() {
           </section>
         )}
       </main>
-
-   
     </div>
   );
 }

@@ -687,13 +687,6 @@ export function IndicatorResults({
           </div>
         )}
       </div>
-
-      {/* ✅ Fora do card (sempre), logo abaixo do card do indicador */}
-      {updatedAtBR ? (
-        <div className="mt-3 text-xs text-muted-foreground">
-          Atualizado em: <span>{updatedAtBR}</span>
-        </div>
-      ) : null}
     </div>
   );
 }
