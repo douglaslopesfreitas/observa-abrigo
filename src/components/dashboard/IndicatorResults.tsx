@@ -521,11 +521,11 @@ export function IndicatorResults({
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="name"
-                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", dy:20 }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                       interval={0}
                       angle={0}
-                      textAnchor="end"
+                      textAnchor="middle"
                       height={60}
                     />
                     <YAxis
