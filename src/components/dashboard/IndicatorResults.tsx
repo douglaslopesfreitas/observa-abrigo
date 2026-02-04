@@ -524,7 +524,7 @@ export function IndicatorResults({
                       tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                       interval={0}
-                      angle={-15}
+                      angle={0}
                       textAnchor="end"
                       height={60}
                     />
