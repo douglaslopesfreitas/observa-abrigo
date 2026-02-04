@@ -9,6 +9,10 @@ import {
   Tooltip,
   BarChart,
   Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
 import type { FilterState } from "@/types/dashboard";
 import { getIndicador } from "@/services/sheetsApi";
@@ -82,6 +86,8 @@ function sumVals(arr: Array<number | null>) {
 
 // Tooltip customizado para esconder linhas com valor 0
 function CompositionTooltip({
+
+  
   active,
   payload,
   label,
@@ -198,11 +204,21 @@ export function IndicatorResults({
   // ✅ data de atualização (vem de _meta!B1)
   const [updatedAtBR, setUpdatedAtBR] = useState<string | null>(null);
 
-  const meta = useMemo(() => {
-    if (!filters.indicador) return null;
-    return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
-  }, [filters.indicador, catalogo]);
+const meta = useMemo(() => {
+  if (!filters.indicador) return null;
+  return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
+}, [filters.indicador, catalogo]);
 
+const isFaixaEtaria = useMemo(() => {
+  const id = String(filters.indicador || "").toLowerCase();
+  const name = String(meta?.indicador_nome || meta?.titulo || "").toLowerCase();
+  const joined = `${id} ${name}`;
+
+  return (
+    joined.includes("faixa") &&
+    (joined.includes("etaria") || joined.includes("etária") || joined.includes("et"))
+  );
+}, [filters.indicador, meta?.indicador_nome, meta?.titulo]);
   // Quando trocar o indicador, volta pra Fotografia atual
   useEffect(() => {
     if (filters.indicador) setView("foto");
@@ -479,19 +495,21 @@ export function IndicatorResults({
               Evolução
             </button>
 
-            <button
-              type="button"
-              onClick={() => setView("composicao")}
-              className={`h-9 px-3 rounded-md border text-sm transition ${
-                view === "composicao"
-                  ? "bg-[#359ad4] text-white border-[#359ad4]"
-                  : "bg-background text-foreground border-border hover:bg-muted"
-              }`}
-            >
-              Por modalidade de acolhimento
-            </button>
-          </div>
-        </div>
+  {!isFaixaEtaria && (
+  <button
+    type="button"
+    onClick={() => setView("composicao")}
+    className={`h-9 px-3 rounded-md border text-sm transition ${
+      view === "composicao"
+        ? "bg-[#359ad4] text-white border-[#359ad4]"
+        : "bg-background text-foreground border-border hover:bg-muted"
+    }`}
+  >
+    Por modalidade de acolhimento
+  </button>
+)}
+</div>
+</div>
 
         {/* ====== Fotografia atual ====== */}
         {view === "foto" && (
@@ -660,34 +678,4 @@ export function IndicatorResults({
             )}
           </div>
         )}
-{/* Fonte / Referência */}
-        <div className="mt-4 text-xs text-muted-foreground space-y-1">
-          <div>
-            Fonte:{" "}
-            {meta?.fonte_url ? (
-              <a
-                href={meta.fonte_url}
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-2"
-              >
-                {meta?.fonte || "Fonte"}
-              </a>
-            ) : (
-              <span>{meta?.fonte || "Fonte"}</span>
-            )}
-          </div>
-
-          {view === "foto" && (
-            <div>
-              Referência:{" "}
-              <span>
-                {fotografiaAtual?.data ? formatDateBR(fotografiaAtual.data) : "-"}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+        
