@@ -86,8 +86,6 @@ function sumVals(arr: Array<number | null>) {
 
 // Tooltip customizado para esconder linhas com valor 0
 function CompositionTooltip({
-
-  
   active,
   payload,
   label,
@@ -166,7 +164,6 @@ function CompositionTooltip({
         ))}
       </div>
 
-      {/* TOTAL */}
       <div
         style={{
           marginTop: 10,
@@ -201,24 +198,24 @@ export function IndicatorResults({
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<ParsedRow[]>([]);
 
-  // ✅ data de atualização (vem de _meta!B1)
+  // data de atualização (vem de _meta!B1)
   const [updatedAtBR, setUpdatedAtBR] = useState<string | null>(null);
 
-const meta = useMemo(() => {
-  if (!filters.indicador) return null;
-  return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
-}, [filters.indicador, catalogo]);
+  const meta = useMemo(() => {
+    if (!filters.indicador) return null;
+    return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
+  }, [filters.indicador, catalogo]);
 
-const isFaixaEtaria = useMemo(() => {
-  const id = String(filters.indicador || "").toLowerCase();
-  const name = String(meta?.indicador_nome || meta?.titulo || "").toLowerCase();
-  const joined = `${id} ${name}`;
+  const isFaixaEtaria = useMemo(() => {
+    const id = String(filters.indicador || "").toLowerCase();
+    const name = String(meta?.indicador_nome || meta?.titulo || "").toLowerCase();
+    const joined = `${id} ${name}`;
+    return (
+      joined.includes("faixa") &&
+      (joined.includes("etaria") || joined.includes("etária") || joined.includes("et"))
+    );
+  }, [filters.indicador, meta?.indicador_nome, meta?.titulo]);
 
-  return (
-    joined.includes("faixa") &&
-    (joined.includes("etaria") || joined.includes("etária") || joined.includes("et"))
-  );
-}, [filters.indicador, meta?.indicador_nome, meta?.titulo]);
   // Quando trocar o indicador, volta pra Fotografia atual
   useEffect(() => {
     if (filters.indicador) setView("foto");
@@ -237,7 +234,6 @@ const isFaixaEtaria = useMemo(() => {
             ? meta.range
             : `${meta.sheet}!${meta.range || "A:Z"}`;
 
-        // ✅ pega indicador e meta em paralelo
         const [data, metaData] = await Promise.all([
           getIndicador(range),
           getIndicador("_meta!B1"),
@@ -245,7 +241,6 @@ const isFaixaEtaria = useMemo(() => {
 
         const values: any[][] = data.values || [];
 
-        // metaData.values deve vir tipo [[ "03/02/2026" ]]
         const metaValues: any[][] = metaData.values || [];
         const b1 = metaValues?.[0]?.[0];
         const b1Str = String(b1 ?? "").trim();
@@ -272,7 +267,7 @@ const isFaixaEtaria = useMemo(() => {
 
           return {
             territorio: String(r[idxTerr] ?? "").trim(),
-            data: rawDate || lastDate, // corrige datas mescladas
+            data: rawDate || lastDate,
             modalidade: String(r[idxMod] ?? "").trim(),
             valor: parseNumber(r[idxVal]),
             fonte: String(r[idxFonte] ?? "").trim(),
@@ -302,13 +297,13 @@ const isFaixaEtaria = useMemo(() => {
 
   const dates = useMemo(() => {
     const ds = Array.from(new Set(filtered.map((r) => r.data).filter(Boolean)));
-    ds.sort(); // iso ordena certo
+    ds.sort();
     return ds;
   }, [filtered]);
 
   const lastDate = dates[dates.length - 1] || "";
 
-  // Modalidades (exceto a linha "Em todos os acolhimentos")
+  // Modalidades (linhas)
   const modalities = useMemo(() => {
     const set = new Set<string>();
     filtered.forEach((r) => {
@@ -317,7 +312,7 @@ const isFaixaEtaria = useMemo(() => {
     return Array.from(set);
   }, [filtered]);
 
-  // ===== Fotografia atual =====
+  // Fotografia atual
   const fotografiaAtual = useMemo(() => {
     if (!lastDate) return null;
 
@@ -362,7 +357,20 @@ const isFaixaEtaria = useMemo(() => {
     };
   }, [filtered, lastDate]);
 
-  // ===== Evolução =====
+  // Pie com percentuais (para faixa etária)
+  const pieFaixaData = useMemo(() => {
+    const base = fotografiaAtual?.fotoData || [];
+    const total = typeof fotografiaAtual?.total === "number" ? fotografiaAtual.total : 0;
+    if (!base.length || !total) return [];
+
+    return base.map((d) => ({
+      name: d.name,
+      value: d.value,
+      percent: (d.value / total) * 100,
+    }));
+  }, [fotografiaAtual]);
+
+  // Evolução padrão (total por data)
   const lineData = useMemo(() => {
     if (!dates.length) return [];
     return dates.map((d) => {
@@ -383,7 +391,39 @@ const isFaixaEtaria = useMemo(() => {
     });
   }, [dates, filtered]);
 
-  // ===== Composição =====
+  // Evolução em barras empilhadas por faixa etária
+  const faixaStacked = useMemo(() => {
+    if (!dates.length) return { data: [] as any[], keys: [] as string[] };
+
+    const keys = [...modalities].filter((m) =>
+      filtered.some((r) => r.modalidade === m && (r.valor || 0) > 0)
+    );
+
+    const byDate = new Map<string, any>();
+
+    dates.forEach((d) => {
+      if (!d) return;
+      if (!byDate.has(d)) byDate.set(d, { date: d });
+      const obj = byDate.get(d);
+
+      keys.forEach((k) => {
+        if (obj[k] == null) obj[k] = 0;
+      });
+
+      filtered
+        .filter((r) => r.data === d && r.modalidade && r.modalidade !== TOTAL_LABEL)
+        .forEach((r) => {
+          if (!keys.includes(r.modalidade)) return;
+          const v = typeof r.valor === "number" ? r.valor : 0;
+          obj[r.modalidade] = (obj[r.modalidade] || 0) + v;
+        });
+    });
+
+    const data = dates.map((d) => byDate.get(d)).filter(Boolean);
+    return { data, keys };
+  }, [dates, filtered, modalities]);
+
+  // Composição padrão (modalidade de acolhimento)
   const stacked = useMemo(() => {
     if (!dates.length) return { data: [] as any[], keys: [] as string[] };
 
@@ -450,12 +490,17 @@ const isFaixaEtaria = useMemo(() => {
   return (
     <div className="space-y-4">
       <div className="chart-container animate-fade-in">
-        {/* Header + botões */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
             <h3 className="section-title">
               {meta?.titulo || meta?.indicador_nome || "Indicador"}
             </h3>
+
+            {updatedAtBR ? (
+              <div className="text-sm text-muted-foreground mt-1">
+                Atualizado em {updatedAtBR}
+              </div>
+            ) : null}
 
             {loading ? (
               <div className="text-sm text-muted-foreground mt-1">
@@ -495,23 +540,22 @@ const isFaixaEtaria = useMemo(() => {
               Evolução
             </button>
 
-  {!isFaixaEtaria && (
-  <button
-    type="button"
-    onClick={() => setView("composicao")}
-    className={`h-9 px-3 rounded-md border text-sm transition ${
-      view === "composicao"
-        ? "bg-[#359ad4] text-white border-[#359ad4]"
-        : "bg-background text-foreground border-border hover:bg-muted"
-    }`}
-  >
-    Por modalidade de acolhimento
-  </button>
-)}
-</div>
-</div>
+            {!isFaixaEtaria && (
+              <button
+                type="button"
+                onClick={() => setView("composicao")}
+                className={`h-9 px-3 rounded-md border text-sm transition ${
+                  view === "composicao"
+                    ? "bg-[#359ad4] text-white border-[#359ad4]"
+                    : "bg-background text-foreground border-border hover:bg-muted"
+                }`}
+              >
+                Por modalidade de acolhimento
+              </button>
+            )}
+          </div>
+        </div>
 
-        {/* ====== Fotografia atual ====== */}
         {view === "foto" && (
           <>
             <div className="mt-4 rounded-xl border bg-background p-4">
@@ -529,7 +573,59 @@ const isFaixaEtaria = useMemo(() => {
             </div>
 
             <div className="h-80 mt-6">
-              {!fotografiaAtual?.fotoData || fotografiaAtual.fotoData.length === 0 ? (
+              {isFaixaEtaria ? (
+                pieFaixaData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                    Sem dados para exibir
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "12px",
+                        }}
+                        formatter={(value: any, name: any, p: any) => {
+                          const v = Number(value || 0);
+                          const pct = p?.payload?.percent;
+                          const pctTxt =
+                            typeof pct === "number"
+                              ? ` (${pct.toFixed(1).replace(".", ",")}%)`
+                              : "";
+                          return [
+                            `${v.toLocaleString("pt-BR")}${pctTxt}`,
+                            String(name),
+                          ];
+                        }}
+                      />
+                      <Legend />
+                      <Pie
+                        data={pieFaixaData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={70}
+                        outerRadius={110}
+                        paddingAngle={2}
+                        labelLine={false}
+                        label={(p: any) => {
+                          const pct = typeof p?.payload?.percent === "number" ? p.payload.percent : 0;
+                          const txt = `${pct.toFixed(0)}%`;
+                          return txt;
+                        }}
+                      >
+                        {pieFaixaData.map((_, i) => (
+                          <Cell
+                            key={`cell-${i}`}
+                            fill={CHART_COLORS[i % CHART_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                )
+              ) : !fotografiaAtual?.fotoData || fotografiaAtual.fotoData.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                   Sem dados de modalidades para exibir na fotografia atual
                 </div>
@@ -539,7 +635,7 @@ const isFaixaEtaria = useMemo(() => {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="name"
-                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", dy:10 }}
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", dy: 10 }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                       interval={0}
                       angle={0}
@@ -569,10 +665,43 @@ const isFaixaEtaria = useMemo(() => {
           </>
         )}
 
-        {/* ====== Evolução ====== */}
         {view === "evolucao" && (
           <div className="h-80 mt-6">
-            {lineData.length === 0 ? (
+            {isFaixaEtaria ? (
+              faixaStacked.data.length === 0 || faixaStacked.keys.length === 0 ? (
+                <div className="h-full flexisa flex items-center justify-center text-sm text-muted-foreground">
+                  Sem dados para exibir
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={faixaStacked.data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                      axisLine={{ stroke: "hsl(var(--border))" }}
+                      tickFormatter={(v) => formatDateBR(String(v))}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                      axisLine={{ stroke: "hsl(var(--border))" }}
+                    />
+                    <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
+                    <Legend />
+                    {faixaStacked.keys.map((k, i) => (
+                      <Bar
+                        key={k}
+                        dataKey={k}
+                        stackId="a"
+                        fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        isAnimationActive={false}
+                        radius={[8, 8, 0, 0]}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              )
+            ) : lineData.length === 0 ? (
               <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                 Sem dados para exibir
               </div>
@@ -617,8 +746,7 @@ const isFaixaEtaria = useMemo(() => {
           </div>
         )}
 
-      {/* ====== Composição ====== */}
-        {view === "composicao" && (
+        {view === "composicao" && !isFaixaEtaria && (
           <div className="h-96 mt-6">
             {stacked.data.length === 0 || stacked.keys.length === 0 ? (
               <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
@@ -627,10 +755,7 @@ const isFaixaEtaria = useMemo(() => {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stacked.data}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(var(--border))"
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
@@ -642,9 +767,7 @@ const isFaixaEtaria = useMemo(() => {
                     tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                     axisLine={{ stroke: "hsl(var(--border))" }}
                   />
-                  <Tooltip
-                    content={<CompositionTooltip unidade={meta?.unidade} />}
-                  />
+                  <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
 
                   {stacked.keys.map((k, i) => (
                     <Bar
@@ -662,15 +785,7 @@ const isFaixaEtaria = useMemo(() => {
                         const r = isTop ? Math.min(R, width / 2, height / 2) : 0;
 
                         if (!r) {
-                          return (
-                            <rect
-                              x={x}
-                              y={y}
-                              width={width}
-                              height={height}
-                              fill={fill}
-                            />
-                          );
+                          return <rect x={x} y={y} width={width} height={height} fill={fill} />;
                         }
 
                         const d = `
@@ -691,7 +806,7 @@ const isFaixaEtaria = useMemo(() => {
             )}
           </div>
         )}
-        </div>
+      </div>
     </div>
   );
 }
