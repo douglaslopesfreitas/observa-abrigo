@@ -65,13 +65,11 @@ type AcolhidosRow = {
 };
 
 function computeTotalForDate(rows: AcolhidosRow[], date: string): number {
-  // Preferência: linha "Em todos os acolhimentos"
   const totalRow = rows.find(
     (r) => r.data === date && r.modalidade === "Em todos os acolhimentos"
   );
   if (totalRow && typeof totalRow.valor === "number") return totalRow.valor;
 
-  // Fallback: soma modalidades do mesmo período (exceto a linha total)
   return rows
     .filter(
       (r) =>
@@ -142,7 +140,6 @@ export default function Index() {
           return;
         }
 
-        // Corrige datas mescladas (igual no IndicatorResults)
         let lastDateAny = "";
         const parsed: AcolhidosRow[] = body.map((r) => {
           const rawDate = String(r[idxData] ?? "").trim();
@@ -156,11 +153,9 @@ export default function Index() {
           };
         });
 
-        // Recorte RJ
         const rj = parsed.filter((x) => x.territorio === "RJ");
-
-        // Datas ordenadas do RJ
         const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
+
         const last = dates[dates.length - 1];
         const prev = dates.length >= 2 ? dates[dates.length - 2] : null;
 
@@ -194,7 +189,6 @@ export default function Index() {
   const kpiData = useMemo(() => {
     const arr = [...overviewKPIs];
 
-    // KPI 1: total
     if (arr.length > 0) {
       arr[0] = {
         ...arr[0],
@@ -205,7 +199,6 @@ export default function Index() {
       } as any;
     }
 
-    // KPI 2: evolução (%)
     if (arr.length > 1) {
       const pct = kpiAcolhidosChangePct;
       const sign = typeof pct === "number" && pct > 0 ? "+" : "";
@@ -213,10 +206,7 @@ export default function Index() {
         ...arr[1],
         id: "evolucao_acolhidos",
         label: "Evolução do acolhimento",
-        value:
-          typeof pct === "number"
-            ? `${sign}${pct.toFixed(1)}%`
-            : (arr[1] as any).value,
+        value: typeof pct === "number" ? `${sign}${pct.toFixed(1)}%` : (arr[1] as any).value,
         unit: "",
       } as any;
     }
@@ -240,11 +230,6 @@ export default function Index() {
           <OverviewCharts />
         </section>
 
-        {/* ✅ Atualizado em: sempre aparece aqui, mesmo sem indicador */}
-        <section>
-          <LastUpdated />
-        </section>
-
         <section className="pt-4">
           {catalogoLoading ? (
             <div className="text-sm text-muted-foreground">Carregando catálogo...</div>
@@ -257,12 +242,16 @@ export default function Index() {
           />
         </section>
 
-        {/* 3) Aqui é onde os botões e gráficos do indicador aparecem */}
         {hasActiveFilters && (
           <section>
             <IndicatorResults filters={filters} catalogo={catalogo} />
           </section>
         )}
+
+        {/* ✅ FINAL DA PÁGINA (não é footer) */}
+        <section className="pt-2">
+          <LastUpdated />
+        </section>
       </main>
     </div>
   );
