@@ -590,7 +590,7 @@ export function IndicatorResults({
                     dataKey="value"
                     stroke={PRIMARY_COLOR}
                     strokeWidth={2}
-                    dot={{ fill: CHART_COLORS[0], strokeWidth: 2, r: 4 }}
+                    dot={{ fill: PRIMARY_COLOR, strokeWidth: 2, r: 4 }}
                     activeDot={{ r: 6, strokeWidth: 0 }}
                   />
                 </LineChart>
