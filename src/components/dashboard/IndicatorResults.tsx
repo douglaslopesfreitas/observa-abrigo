@@ -617,7 +617,7 @@ const isFaixaEtaria = useMemo(() => {
           </div>
         )}
 
-        {/* ====== Composição ====== */}
+      {/* ====== Composição ====== */}
         {view === "composicao" && (
           <div className="h-96 mt-6">
             {stacked.data.length === 0 || stacked.keys.length === 0 ? (
@@ -627,7 +627,10 @@ const isFaixaEtaria = useMemo(() => {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stacked.data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
@@ -639,7 +642,9 @@ const isFaixaEtaria = useMemo(() => {
                     tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                     axisLine={{ stroke: "hsl(var(--border))" }}
                   />
-                  <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
+                  <Tooltip
+                    content={<CompositionTooltip unidade={meta?.unidade} />}
+                  />
 
                   {stacked.keys.map((k, i) => (
                     <Bar
@@ -657,7 +662,15 @@ const isFaixaEtaria = useMemo(() => {
                         const r = isTop ? Math.min(R, width / 2, height / 2) : 0;
 
                         if (!r) {
-                          return <rect x={x} y={y} width={width} height={height} fill={fill} />;
+                          return (
+                            <rect
+                              x={x}
+                              y={y}
+                              width={width}
+                              height={height}
+                              fill={fill}
+                            />
+                          );
                         }
 
                         const d = `
@@ -678,4 +691,7 @@ const isFaixaEtaria = useMemo(() => {
             )}
           </div>
         )}
-        
+        </div>
+    </div>
+  );
+}
