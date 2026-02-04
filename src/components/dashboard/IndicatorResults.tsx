@@ -495,19 +495,19 @@ const isFaixaEtaria = useMemo(() => {
               Evolução
             </button>
 
-  {!isFaixaEtaria && (
+
   <button
-    type="button"
-    onClick={() => setView("composicao")}
-    className={`h-9 px-3 rounded-md border text-sm transition ${
-      view === "composicao"
-        ? "bg-[#359ad4] text-white border-[#359ad4]"
-        : "bg-background text-foreground border-border hover:bg-muted"
-    }`}
-  >
-    Por modalidade de acolhimento
-  </button>
-)}
+  type="button"
+  onClick={() => setView("composicao")}
+  className={`h-9 px-3 rounded-md border text-sm transition ${
+    view === "composicao"
+      ? "bg-[#359ad4] text-white border-[#359ad4]"
+      : "bg-background text-foreground border-border hover:bg-muted"
+  }`}
+>
+  Por modalidade de acolhimento
+</button>
+
 </div>
 </div>
 
