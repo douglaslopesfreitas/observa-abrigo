@@ -198,10 +198,35 @@ export function IndicatorResults({
   // ✅ data de atualização (vem de _meta!B1)
   const [updatedAtBR, setUpdatedAtBR] = useState<string | null>(null);
 
-  const meta = useMemo(() => {
-    if (!filters.indicador) return null;
-    return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
-  }, [filters.indicador, catalogo]);
+ const meta = useMemo(() => {
+  if (!filters.indicador) return null;
+
+  const ind = String(filters.indicador || "").trim();
+  const area = String(filters.area || "").trim();
+  const fonte = String(filters.fonte || "").trim();
+
+  // 1) tenta bater por area + indicador + fonte (quando houver fonte selecionada)
+  if (fonte) {
+    const hit = catalogo.find(
+      (c) =>
+        String(c.area || "").trim() === area &&
+        String(c.indicador_id || "").trim() === ind &&
+        String(c.fonte || "").trim() === fonte
+    );
+    if (hit) return hit;
+  }
+
+  // 2) fallback por area + indicador (se fonte não estiver setada ainda)
+  const hit2 = catalogo.find(
+    (c) =>
+      String(c.area || "").trim() === area &&
+      String(c.indicador_id || "").trim() === ind
+  );
+  if (hit2) return hit2;
+
+  // 3) fallback final (como era antes)
+  return catalogo.find((c) => String(c.indicador_id || "").trim() === ind) || null;
+}, [filters.area, filters.indicador, filters.fonte, catalogo]);
 
   // Quando trocar o indicador, volta pra Fotografia atual
   useEffect(() => {
