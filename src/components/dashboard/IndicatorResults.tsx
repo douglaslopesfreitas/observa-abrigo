@@ -547,16 +547,6 @@ export function IndicatorResults({
                   {meta.unidade}
                 </div>
               ) : null}
-
-              {/* ✅ Fonte + Referência (data do dado) */}
-              <div className="mt-4 space-y-1">
-                <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-                {lastDate ? (
-                  <div className="text-sm text-muted-foreground">
-                    Referência: {formatDateBR(lastDate)}
-                  </div>
-                ) : null}
-              </div>
             </div>
 
             <div className="h-80 mt-6">
@@ -612,17 +602,22 @@ export function IndicatorResults({
                 </ResponsiveContainer>
               )}
             </div>
+
+            {/* ✅ Fonte + Referência (embaixo do gráfico) */}
+            <div className="mt-3 space-y-1">
+              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+              {lastDate ? (
+                <div className="text-sm text-muted-foreground">
+                  Referência: {formatDateBR(lastDate)}
+                </div>
+              ) : null}
+            </div>
           </>
         )}
 
         {/* ====== Evolução ====== */}
         {view === "evolucao" && (
           <div className="mt-4">
-            {/* ✅ Só Fonte */}
-            <div className="mb-2">
-              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-            </div>
-
             <div className="h-80 mt-6">
               {lineData.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
@@ -676,17 +671,17 @@ export function IndicatorResults({
                 </ResponsiveContainer>
               )}
             </div>
+
+            {/* ✅ Só Fonte (embaixo do gráfico) */}
+            <div className="mt-3">
+              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+            </div>
           </div>
         )}
 
         {/* ====== Composição ====== */}
         {view === "composicao" && (
           <div className="mt-4">
-            {/* ✅ Só Fonte */}
-            <div className="mb-2">
-              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-            </div>
-
             <div className="h-96 mt-6">
               {stacked.data.length === 0 || stacked.keys.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
@@ -716,7 +711,9 @@ export function IndicatorResults({
                       }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                     />
-                    <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
+                    <Tooltip
+                      content={<CompositionTooltip unidade={meta?.unidade} />}
+                    />
 
                     {stacked.keys.map((k, i) => (
                       <Bar
@@ -731,7 +728,9 @@ export function IndicatorResults({
 
                           const isTop = payload?.__top === k;
                           const R = 8;
-                          const r = isTop ? Math.min(R, width / 2, height / 2) : 0;
+                          const r = isTop
+                            ? Math.min(R, width / 2, height / 2)
+                            : 0;
 
                           if (!r) {
                             return (
@@ -761,6 +760,11 @@ export function IndicatorResults({
                   </BarChart>
                 </ResponsiveContainer>
               )}
+            </div>
+
+            {/* ✅ Só Fonte (embaixo do gráfico) */}
+            <div className="mt-3">
+              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
             </div>
           </div>
         )}
