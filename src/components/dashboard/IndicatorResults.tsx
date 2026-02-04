@@ -84,10 +84,31 @@ function sumVals(arr: Array<number | null>) {
   return arr.reduce((acc, v) => acc + (typeof v === "number" ? v : 0), 0);
 }
 
+// ✅ Fonte (clicável se tiver URL)
+function FonteLine({ fonte, url }: { fonte?: string; url?: string }) {
+  if (!fonte) return null;
+
+  return (
+    <div className="text-sm text-muted-foreground">
+      Fonte:{" "}
+      {url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-2 hover:opacity-80"
+        >
+          {fonte}
+        </a>
+      ) : (
+        fonte
+      )}
+    </div>
+  );
+}
+
 // Tooltip customizado para esconder linhas com valor 0
 function CompositionTooltip({
-
-  
   active,
   payload,
   label,
@@ -204,21 +225,24 @@ export function IndicatorResults({
   // ✅ data de atualização (vem de _meta!B1)
   const [updatedAtBR, setUpdatedAtBR] = useState<string | null>(null);
 
-const meta = useMemo(() => {
-  if (!filters.indicador) return null;
-  return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
-}, [filters.indicador, catalogo]);
+  const meta = useMemo(() => {
+    if (!filters.indicador) return null;
+    return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
+  }, [filters.indicador, catalogo]);
 
-const isFaixaEtaria = useMemo(() => {
-  const id = String(filters.indicador || "").toLowerCase();
-  const name = String(meta?.indicador_nome || meta?.titulo || "").toLowerCase();
-  const joined = `${id} ${name}`;
+  const isFaixaEtaria = useMemo(() => {
+    const id = String(filters.indicador || "").toLowerCase();
+    const name = String(meta?.indicador_nome || meta?.titulo || "").toLowerCase();
+    const joined = `${id} ${name}`;
 
-  return (
-    joined.includes("faixa") &&
-    (joined.includes("etaria") || joined.includes("etária") || joined.includes("et"))
-  );
-}, [filters.indicador, meta?.indicador_nome, meta?.titulo]);
+    return (
+      joined.includes("faixa") &&
+      (joined.includes("etaria") ||
+        joined.includes("etária") ||
+        joined.includes("et"))
+    );
+  }, [filters.indicador, meta?.indicador_nome, meta?.titulo]);
+
   // Quando trocar o indicador, volta pra Fotografia atual
   useEffect(() => {
     if (filters.indicador) setView("foto");
@@ -265,14 +289,14 @@ const isFaixaEtaria = useMemo(() => {
         const idxVal = headers.indexOf("valor");
         const idxFonte = headers.indexOf("fonte");
 
-        let lastDate = "";
+        let lastDateTmp = "";
         const parsed: ParsedRow[] = body.map((r) => {
           const rawDate = String(r[idxData] ?? "").trim();
-          if (rawDate) lastDate = rawDate;
+          if (rawDate) lastDateTmp = rawDate;
 
           return {
             territorio: String(r[idxTerr] ?? "").trim(),
-            data: rawDate || lastDate, // corrige datas mescladas
+            data: rawDate || lastDateTmp, // corrige datas mescladas
             modalidade: String(r[idxMod] ?? "").trim(),
             valor: parseNumber(r[idxVal]),
             fonte: String(r[idxFonte] ?? "").trim(),
@@ -435,8 +459,7 @@ const isFaixaEtaria = useMemo(() => {
         obj[r.modalidade] = (obj[r.modalidade] || 0) + v;
       });
 
-      const topKey =
-        [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
+      const topKey = [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
       obj.__top = topKey;
     });
 
@@ -495,21 +518,19 @@ const isFaixaEtaria = useMemo(() => {
               Evolução
             </button>
 
-
-  <button
-  type="button"
-  onClick={() => setView("composicao")}
-  className={`h-9 px-3 rounded-md border text-sm transition ${
-    view === "composicao"
-      ? "bg-[#359ad4] text-white border-[#359ad4]"
-      : "bg-background text-foreground border-border hover:bg-muted"
-  }`}
->
-  Por modalidade de acolhimento
-</button>
-
-</div>
-</div>
+            <button
+              type="button"
+              onClick={() => setView("composicao")}
+              className={`h-9 px-3 rounded-md border text-sm transition ${
+                view === "composicao"
+                  ? "bg-[#359ad4] text-white border-[#359ad4]"
+                  : "bg-background text-foreground border-border hover:bg-muted"
+              }`}
+            >
+              Por modalidade de acolhimento
+            </button>
+          </div>
+        </div>
 
         {/* ====== Fotografia atual ====== */}
         {view === "foto" && (
@@ -526,20 +547,38 @@ const isFaixaEtaria = useMemo(() => {
                   {meta.unidade}
                 </div>
               ) : null}
+
+              {/* ✅ Fonte + Referência (data do dado) */}
+              <div className="mt-4 space-y-1">
+                <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+                {lastDate ? (
+                  <div className="text-sm text-muted-foreground">
+                    Referência: {formatDateBR(lastDate)}
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <div className="h-80 mt-6">
-              {!fotografiaAtual?.fotoData || fotografiaAtual.fotoData.length === 0 ? (
+              {!fotografiaAtual?.fotoData ||
+              fotografiaAtual.fotoData.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                   Sem dados de modalidades para exibir na fotografia atual
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={fotografiaAtual.fotoData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                    />
                     <XAxis
                       dataKey="name"
-                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", dy:10 }}
+                      tick={{
+                        fontSize: 11,
+                        fill: "hsl(var(--muted-foreground))",
+                        dy: 10,
+                      }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                       interval={0}
                       angle={0}
@@ -547,7 +586,10 @@ const isFaixaEtaria = useMemo(() => {
                       height={60}
                     />
                     <YAxis
-                      tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                      tick={{
+                        fontSize: 12,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                     />
                     <Tooltip
@@ -561,7 +603,11 @@ const isFaixaEtaria = useMemo(() => {
                         meta?.unidade || "valor",
                       ]}
                     />
-                    <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[8, 8, 0, 0]} />
+                    <Bar
+                      dataKey="value"
+                      fill={PRIMARY_COLOR}
+                      radius={[8, 8, 0, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -571,127 +617,154 @@ const isFaixaEtaria = useMemo(() => {
 
         {/* ====== Evolução ====== */}
         {view === "evolucao" && (
-          <div className="h-80 mt-6">
-            {lineData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                Sem dados para exibir
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={lineData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                    axisLine={{ stroke: "hsl(var(--border))" }}
-                    tickFormatter={(v) => formatDateBR(String(v))}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                    axisLine={{ stroke: "hsl(var(--border))" }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "12px",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                    }}
-                    labelFormatter={(l) => formatDateBR(String(l))}
-                    formatter={(value: number) => [
-                      Number(value).toLocaleString("pt-BR"),
-                      meta?.unidade || "valor",
-                    ]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke={PRIMARY_COLOR}
-                    strokeWidth={2}
-                    dot={{ fill: CHART_COLORS[0], strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        )}
+          <div className="mt-4">
+            {/* ✅ Só Fonte */}
+            <div className="mb-2">
+              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+            </div>
 
-      {/* ====== Composição ====== */}
-        {view === "composicao" && (
-          <div className="h-96 mt-6">
-            {stacked.data.length === 0 || stacked.keys.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                Sem dados de modalidades para empilhar
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stacked.data}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(var(--border))"
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                    axisLine={{ stroke: "hsl(var(--border))" }}
-                    tickFormatter={(v) => formatDateBR(String(v))}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                    axisLine={{ stroke: "hsl(var(--border))" }}
-                  />
-                  <Tooltip
-                    content={<CompositionTooltip unidade={meta?.unidade} />}
-                  />
-
-                  {stacked.keys.map((k, i) => (
-                    <Bar
-                      key={k}
-                      dataKey={k}
-                      stackId="a"
-                      fill={CHART_COLORS[i % CHART_COLORS.length]}
-                      isAnimationActive={false}
-                      shape={(props: any) => {
-                        const { x, y, width, height, fill, payload } = props;
-                        if (!width || !height || height <= 0) return null;
-
-                        const isTop = payload?.__top === k;
-                        const R = 8;
-                        const r = isTop ? Math.min(R, width / 2, height / 2) : 0;
-
-                        if (!r) {
-                          return (
-                            <rect
-                              x={x}
-                              y={y}
-                              width={width}
-                              height={height}
-                              fill={fill}
-                            />
-                          );
-                        }
-
-                        const d = `
-                          M ${x} ${y + r}
-                          Q ${x} ${y} ${x + r} ${y}
-                          L ${x + width - r} ${y}
-                          Q ${x + width} ${y} ${x + width} ${y + r}
-                          L ${x + width} ${y + height}
-                          L ${x} ${y + height}
-                          Z
-                        `;
-                        return <path d={d} fill={fill} />;
-                      }}
+            <div className="h-80 mt-6">
+              {lineData.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Sem dados para exibir
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={lineData}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
                     />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+                    <XAxis
+                      dataKey="date"
+                      tick={{
+                        fontSize: 12,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
+                      axisLine={{ stroke: "hsl(var(--border))" }}
+                      tickFormatter={(v) => formatDateBR(String(v))}
+                    />
+                    <YAxis
+                      tick={{
+                        fontSize: 12,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
+                      axisLine={{ stroke: "hsl(var(--border))" }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      }}
+                      labelFormatter={(l) => formatDateBR(String(l))}
+                      formatter={(value: number) => [
+                        Number(value).toLocaleString("pt-BR"),
+                        meta?.unidade || "valor",
+                      ]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke={PRIMARY_COLOR}
+                      strokeWidth={2}
+                      dot={{ fill: CHART_COLORS[0], strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         )}
-        </div>
+
+        {/* ====== Composição ====== */}
+        {view === "composicao" && (
+          <div className="mt-4">
+            {/* ✅ Só Fonte */}
+            <div className="mb-2">
+              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+            </div>
+
+            <div className="h-96 mt-6">
+              {stacked.data.length === 0 || stacked.keys.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Sem dados de modalidades para empilhar
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stacked.data}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tick={{
+                        fontSize: 12,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
+                      axisLine={{ stroke: "hsl(var(--border))" }}
+                      tickFormatter={(v) => formatDateBR(String(v))}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      tick={{
+                        fontSize: 12,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
+                      axisLine={{ stroke: "hsl(var(--border))" }}
+                    />
+                    <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
+
+                    {stacked.keys.map((k, i) => (
+                      <Bar
+                        key={k}
+                        dataKey={k}
+                        stackId="a"
+                        fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        isAnimationActive={false}
+                        shape={(props: any) => {
+                          const { x, y, width, height, fill, payload } = props;
+                          if (!width || !height || height <= 0) return null;
+
+                          const isTop = payload?.__top === k;
+                          const R = 8;
+                          const r = isTop ? Math.min(R, width / 2, height / 2) : 0;
+
+                          if (!r) {
+                            return (
+                              <rect
+                                x={x}
+                                y={y}
+                                width={width}
+                                height={height}
+                                fill={fill}
+                              />
+                            );
+                          }
+
+                          const d = `
+                            M ${x} ${y + r}
+                            Q ${x} ${y} ${x + r} ${y}
+                            L ${x + width - r} ${y}
+                            Q ${x + width} ${y} ${x + width} ${y + r}
+                            L ${x + width} ${y + height}
+                            L ${x} ${y + height}
+                            Z
+                          `;
+                          return <path d={d} fill={fill} />;
+                        }}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
