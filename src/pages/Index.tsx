@@ -184,34 +184,56 @@ export default function Index() {
         setKpiAcolhidosChangePct(null);
       });
   }, []);
-
-  const kpiData = useMemo(() => {
-    const arr = [...overviewKPIs];
-
-    if (arr.length > 0) {
-      arr[0] = {
-        ...arr[0],
-        id: "total_acolhidos",
-        label: "Crianças e adolescentes acolhidos",
-        value: kpiAcolhidos ?? (arr[0] as any).value,
-        unit: "",
-      } as any;
+const KPI_BASE = [
+  {
+    id: "total_acolhidos",
+    label: "Crianças e adolescentes acolhidos",
+    value: null,
+    unit: "",
+  },
+  {
+    id: "evolucao_acolhidos",
+    label: "Evolução do acolhimento",
+    value: null,
+    unit: "",
+  },
+  {
+    id: "frequencia_escolar",
+    label: "Frequência escolar",
+    value: null,
+    unit: "%",
+  },
+  {
+    id: "tempo_medio",
+    label: "Tempo médio de acolhimento",
+    value: null,
+    unit: "anos",
+  },
+];
+ const kpiData = useMemo(() => {
+  return KPI_BASE.map((kpi) => {
+    if (kpi.id === "total_acolhidos") {
+      return {
+        ...kpi,
+        value: typeof kpiAcolhidos === "number" ? kpiAcolhidos : null,
+      };
     }
 
-    if (arr.length > 1) {
-      const pct = kpiAcolhidosChangePct;
-      const sign = typeof pct === "number" && pct > 0 ? "+" : "";
-      arr[1] = {
-        ...arr[1],
-        id: "evolucao_acolhidos",
-        label: "Evolução do acolhimento",
-        value: typeof pct === "number" ? `${sign}${pct.toFixed(1)}%` : (arr[1] as any).value,
-        unit: "",
-      } as any;
+    if (kpi.id === "evolucao_acolhidos") {
+      if (typeof kpiAcolhidosChangePct === "number") {
+        const sign = kpiAcolhidosChangePct > 0 ? "+" : "";
+        return {
+          ...kpi,
+          value: `${sign}${kpiAcolhidosChangePct.toFixed(1)}%`,
+        };
+      }
+      return { ...kpi, value: null };
     }
 
-    return arr;
-  }, [kpiAcolhidos, kpiAcolhidosChangePct]);
+    // qualquer KPI que ainda não tem dado real
+    return { ...kpi, value: null };
+  });
+}, [kpiAcolhidos, kpiAcolhidosChangePct]);
 
   const hasActiveFilters = Boolean(filters.area || filters.indicador);
 
