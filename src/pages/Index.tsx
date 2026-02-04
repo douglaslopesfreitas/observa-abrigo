@@ -3,7 +3,6 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { KPICards } from "@/components/dashboard/KPICards";
 import { OverviewCharts } from "@/components/dashboard/OverviewCharts";
 import { FilterSection } from "@/components/dashboard/FilterSection";
-import { overviewKPIs } from "@/data/mockData";
 import type { FilterState } from "@/types/dashboard";
 import { getCatalogo, getIndicadorSheet } from "@/services/sheetsApi";
 import { IndicatorResults } from "@/components/dashboard/IndicatorResults";
