@@ -93,11 +93,26 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
     }
   }, [indicadores, filters, onFilterChange]);
 
-  useEffect(() => {
-    if (fontes.length === 1 && !filters.fonte) {
-      onFilterChange({ ...filters, fonte: fontes[0] });
-    }
-  }, [fontes, filters, onFilterChange]);
+ useEffect(() => {
+  // ✅ Se só existe 1 fonte possível, ela precisa virar a fonte ativa
+  // para evitar misturar dados de fontes diferentes na mesma data.
+  if (fontes.length === 1 && filters.fonte !== fontes[0]) {
+    onFilterChange({
+      ...filters,
+      fonte: fontes[0],
+      territorio: null, // território depende da fonte
+    });
+  }
+
+  // ✅ Se a fonte selecionada deixou de existir (mudou indicador/área), limpa.
+  if (fontes.length > 1 && filters.fonte && !fontes.includes(filters.fonte)) {
+    onFilterChange({
+      ...filters,
+      fonte: null,
+      territorio: null,
+    });
+  }
+}, [fontes, filters, onFilterChange]);
 
   useEffect(() => {
     if (territorios.length === 1 && !filters.territorio) {
