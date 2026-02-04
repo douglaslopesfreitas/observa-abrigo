@@ -200,35 +200,8 @@ export function IndicatorResults({
 
   const meta = useMemo(() => {
     if (!filters.indicador) return null;
-
-    const ind = String(filters.indicador || "").trim();
-    const area = String(filters.area || "").trim();
-    const fonte = String(filters.fonte || "").trim();
-
-    // 1) tenta bater por area + indicador + fonte (quando houver fonte selecionada)
-    if (fonte) {
-      const hit = catalogo.find(
-        (c) =>
-          String(c.area || "").trim() === area &&
-          String(c.indicador_id || "").trim() === ind &&
-          String(c.fonte || "").trim() === fonte
-      );
-      if (hit) return hit;
-    }
-
-    // 2) fallback por area + indicador (se fonte não estiver setada ainda)
-    const hit2 = catalogo.find(
-      (c) =>
-        String(c.area || "").trim() === area &&
-        String(c.indicador_id || "").trim() === ind
-    );
-    if (hit2) return hit2;
-
-    // 3) fallback final (como era antes)
-    return (
-      catalogo.find((c) => String(c.indicador_id || "").trim() === ind) || null
-    );
-  }, [filters.area, filters.indicador, filters.fonte, catalogo]);
+    return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
+  }, [filters.indicador, catalogo]);
 
   // Quando trocar o indicador, volta pra Fotografia atual
   useEffect(() => {
@@ -237,35 +210,7 @@ export function IndicatorResults({
 
   useEffect(() => {
     async function run() {
-      if (!filters.indicador) return;
-
-      // Se houver mais de uma fonte possível para esse indicador e ainda não escolheram,
-      // não busca nada (evita pegar fallback errado / misturar).
-      const ind = String(filters.indicador || "").trim();
-      const area = String(filters.area || "").trim();
-
-      const rowsDoIndicador = catalogo.filter(
-        (c) =>
-          String(c.area || "").trim() === area &&
-          String(c.indicador_id || "").trim() === ind
-      );
-
-      const fontesDisponiveis = Array.from(
-        new Set(
-          rowsDoIndicador
-            .map((c) => String(c.fonte || "").trim())
-            .filter(Boolean)
-        )
-      );
-
-      if (fontesDisponiveis.length > 1 && !filters.fonte) {
-        setRows([]);
-        setErr(null);
-        setLoading(false);
-        return;
-      }
-
-      if (!meta?.sheet) return;
+      if (!filters.indicador || !meta?.sheet) return;
 
       setLoading(true);
       setErr(null);
@@ -314,8 +259,7 @@ export function IndicatorResults({
             data: rawDate || lastDate, // corrige datas mescladas
             modalidade: String(r[idxMod] ?? "").trim(),
             valor: parseNumber(r[idxVal]),
-            // se a coluna vier vazia, usa a fonte do catálogo
-            fonte: String(r[idxFonte] ?? meta?.fonte ?? "").trim(),
+            fonte: String(r[idxFonte] ?? "").trim(),
           };
         });
 
@@ -330,14 +274,7 @@ export function IndicatorResults({
     }
 
     run();
-  }, [
-    filters.area,
-    filters.indicador,
-    filters.fonte,
-    meta?.sheet,
-    meta?.range,
-    catalogo,
-  ]);
+  }, [filters.indicador, meta?.sheet, meta?.range]);
 
   const territorioSel = filters.territorio || "RJ";
 
@@ -574,25 +511,17 @@ export function IndicatorResults({
             </div>
 
             <div className="h-80 mt-6">
-              {!fotografiaAtual?.fotoData ||
-              fotografiaAtual.fotoData.length === 0 ? (
+              {!fotografiaAtual?.fotoData || fotografiaAtual.fotoData.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                   Sem dados de modalidades para exibir na fotografia atual
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={fotografiaAtual.fotoData}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="hsl(var(--border))"
-                    />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="name"
-                      tick={{
-                        fontSize: 11,
-                        fill: "hsl(var(--muted-foreground))",
-                        dy: 10,
-                      }}
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", dy:10 }}
                       axisLine={{ stroke: "hsl(var(--border))" }}
                       interval={0}
                       angle={0}
@@ -614,11 +543,7 @@ export function IndicatorResults({
                         meta?.unidade || "valor",
                       ]}
                     />
-                    <Bar
-                      dataKey="value"
-                      fill={PRIMARY_COLOR}
-                      radius={[8, 8, 0, 0]}
-                    />
+                    <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -636,10 +561,7 @@ export function IndicatorResults({
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={lineData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(var(--border))"
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
@@ -668,7 +590,7 @@ export function IndicatorResults({
                     dataKey="value"
                     stroke={PRIMARY_COLOR}
                     strokeWidth={2}
-                    dot={{ fill: PRIMARY_COLOR, strokeWidth: 2, r: 4 }}
+                    dot={{ fill: , strokeWidth: 2, r: 4 }}
                     activeDot={{ r: 6, strokeWidth: 0 }}
                   />
                 </LineChart>
@@ -687,10 +609,7 @@ export function IndicatorResults({
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stacked.data}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(var(--border))"
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
@@ -717,20 +636,10 @@ export function IndicatorResults({
 
                         const isTop = payload?.__top === k;
                         const R = 8;
-                        const r = isTop
-                          ? Math.min(R, width / 2, height / 2)
-                          : 0;
+                        const r = isTop ? Math.min(R, width / 2, height / 2) : 0;
 
                         if (!r) {
-                          return (
-                            <rect
-                              x={x}
-                              y={y}
-                              width={width}
-                              height={height}
-                              fill={fill}
-                            />
-                          );
+                          return <rect x={x} y={y} width={width} height={height} fill={fill} />;
                         }
 
                         const d = `
@@ -751,8 +660,7 @@ export function IndicatorResults({
             )}
           </div>
         )}
-
-        {/* Fonte / Referência */}
+{/* Fonte / Referência */}
         <div className="mt-4 text-xs text-muted-foreground space-y-1">
           <div>
             Fonte:{" "}
@@ -783,4 +691,3 @@ export function IndicatorResults({
     </div>
   );
 }
-```0
