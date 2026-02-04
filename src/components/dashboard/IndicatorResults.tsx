@@ -661,32 +661,44 @@ export function IndicatorResults({
           </div>
         )}
 
-{/* Fonte e referência (só na Fotografia atual) */}
-        {view === "foto" && (
-          <div className="mt-4 text-xs text-muted-foreground space-y-1">
-            <div>
-              Fonte:{" "}
-              {meta?.fonte_url ? (
-                <a
-                  href={meta.fonte_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-2"
-                >
-                  {meta?.fonte || "Fonte"}
-                </a>
-              ) : (
-                <span>{meta?.fonte || "Fonte"}</span>
-              )}
-            </div>
-
-            <div>
-              Referência:{" "}
-              <span>{fotografiaAtual?.data ? formatDateBR(fotografiaAtual.data) : "-"}</span>
-            </div>
-          </div>
-        )}
-      </div>
+{/* Fonte / Referência */}
+{view === "foto" ? (
+  <div className="mt-4 text-xs text-muted-foreground space-y-1">
+    <div>
+      Fonte:{" "}
+      {meta?.fonte_url ? (
+        <a
+          href={meta.fonte_url}
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-2"
+        >
+          {meta?.fonte || "Fonte"}
+        </a>
+      ) : (
+        <span>{meta?.fonte || "Fonte"}</span>
+      )}
     </div>
-  );
-}
+
+    <div>
+      Referência:{" "}
+      <span>{fotografiaAtual?.data ? formatDateBR(fotografiaAtual.data) : "-"}</span>
+    </div>
+  </div>
+) : (
+  <div className="mt-4 text-xs text-muted-foreground">
+    Fonte:{" "}
+    {meta?.fonte_url ? (
+      <a
+        href={meta.fonte_url}
+        target="_blank"
+        rel="noreferrer"
+        className="underline underline-offset-2"
+      >
+        {meta?.fonte || "Fonte"}
+      </a>
+    ) : (
+      <span>{meta?.fonte || "Fonte"}</span>
+    )}
+  </div>
+)}
