@@ -32,8 +32,9 @@ const CHART_COLORS = [
 const PRIMARY_COLOR = "#359AD4";
 
 interface ChartRendererProps {
-  perfil?: PerfilVisualizacao;
+  perfil?: PerfilVisualizacao | "linha" | "barras_agrupadas"; // ✅ Adicionados tipos para evolução
   data: any[];
+  keys?: string[]; // ✅ Necessário para as barras agrupadas (lado a lado)
   unidade?: string;
   formatDateBR?: (date: string) => string;
   showBanner?: boolean;
@@ -43,6 +44,7 @@ interface ChartRendererProps {
 export function ChartRenderer({
   perfil = "padrao",
   data,
+  keys = ["value"], // ✅ Valor padrão é a coluna única "value"
   unidade,
   formatDateBR = (d) => d,
   showBanner = false,
@@ -56,25 +58,70 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PADRÃO: Gráfico de Barras
+  // ✅ Função para o Rótulo (Bold e Porcentagem abaixo)
+  const renderCustomLabel = ({ x, y, name, percent }: any) => {
+    return (
+      <text x={x} y={y} fill="currentColor" textAnchor="middle" dominantBaseline="central" className="fill-foreground">
+        <tspan x={x} dy="-0.5em" fontWeight="bold">{name}</tspan>
+        <tspan x={x} dy="1.2em">{(percent * 100).toFixed(1)}%</tspan>
+      </text>
+    );
+  };
+
+  // ✅ NOVO: Gráfico de Linha (Para evolução do perfil padrão)
+  if (perfil === "linha") {
+    return (
+      <div className="h-80 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={formatDateBR} />
+            <YAxis tick={{ fontSize: 12 }} />
+            <Tooltip labelFormatter={formatDateBR} />
+            <Line type="monotone" dataKey="value" stroke={PRIMARY_COLOR} strokeWidth={2} dot={{ r: 4 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  // ✅ NOVO: Gráfico de Barras Agrupadas (Lado a lado - para evolução da pizza)
+  if (perfil === "barras_agrupadas") {
+    return (
+      <div className="h-80 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={formatDateBR} />
+            <YAxis tick={{ fontSize: 12 }} />
+            <Tooltip labelFormatter={formatDateBR} />
+            {keys.map((key, index) => (
+              <Bar 
+                key={key} 
+                dataKey={key} 
+                fill={CHART_COLORS[index % CHART_COLORS.length]} 
+                radius={[4, 4, 0, 0]} 
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  // ✅ PERFIL PADRÃO: Gráfico de Barras Único
   if (perfil === "padrao") {
     return (
       <div className="flex flex-col w-full">
-        {/* Banner com o número total */}
         {showBanner && typeof totalValue === "number" && (
           <div className="mb-6 rounded-xl border bg-background p-4 text-left">
             <div className="text-4xl font-semibold tracking-tight text-foreground">
               {totalValue.toLocaleString("pt-BR")}
             </div>
-            {unidade && (
-              <div className="text-sm text-muted-foreground mt-1">
-                {unidade}
-              </div>
-            )}
+            {unidade && <div className="text-sm text-muted-foreground mt-1">{unidade}</div>}
           </div>
         )}
 
-        {/* Contêiner do Gráfico com altura fixa interna */}
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
@@ -88,20 +135,10 @@ export function ChartRenderer({
                 textAnchor="middle"
                 height={60}
               />
-              <YAxis
-                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                axisLine={{ stroke: "hsl(var(--border))" }}
-              />
+              <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "12px",
-                }}
-                formatter={(value: number) => [
-                  Number(value).toLocaleString("pt-BR"),
-                  unidade || "valor",
-                ]}
+                contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px" }}
+                formatter={(value: number) => [Number(value).toLocaleString("pt-BR"), unidade || "valor"]}
               />
               <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[8, 8, 0, 0]} />
             </BarChart>
@@ -111,20 +148,23 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PIZZA: Gráfico de Pizza
+  // ✅ PERFIL PIZZA: Gráfico de Pizza (Donut)
   if (perfil === "pizza") {
     return (
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
+            {typeof totalValue === "number" && (
+              <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="fill-foreground font-bold" style={{ fontSize: "24px" }}>
+                {totalValue.toLocaleString("pt-BR")}
+              </text>
+            )}
             <Pie
               data={data}
               cx="50%"
               cy="50%"
               labelLine={true}
-              label={({ name, percent }) =>
-                `${name}: ${(percent * 100).toFixed(1)}%`
-              }
+              label={renderCustomLabel}
               innerRadius={80}
               outerRadius={120}
               paddingAngle={5}
@@ -132,10 +172,7 @@ export function ChartRenderer({
               dataKey="value"
             >
               {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={CHART_COLORS[index % CHART_COLORS.length]}
-                />
+                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="none" />
               ))}
             </Pie>
           </PieChart>
