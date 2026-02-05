@@ -1,13 +1,15 @@
 import {
   ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
   PieChart,
   Pie,
   Cell,
-  BarChart,
-  Bar,
+  CartesianGrid,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
 } from "recharts";
 import type { PerfilVisualizacao } from "@/types/dashboard";
@@ -54,31 +56,11 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ Função Customizada para o Rótulo (Apenas quebra de linha e bold)
-  const renderCustomLabel = ({ x, y, name, percent }: any) => {
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="currentColor"
-        textAnchor="middle"
-        dominantBaseline="central"
-        className="fill-foreground"
-      >
-        <tspan x={x} dy="-0.5em" fontWeight="bold">
-          {name}
-        </tspan>
-        <tspan x={x} dy="1.2em">
-          {(percent * 100).toFixed(1)}%
-        </tspan>
-      </text>
-    );
-  };
-
   // ✅ PERFIL PADRÃO: Gráfico de Barras
   if (perfil === "padrao") {
     return (
       <div className="flex flex-col w-full">
+        {/* Banner com o número total */}
         {showBanner && typeof totalValue === "number" && (
           <div className="mb-6 rounded-xl border bg-background p-4 text-left">
             <div className="text-4xl font-semibold tracking-tight text-foreground">
@@ -92,6 +74,7 @@ export function ChartRenderer({
           </div>
         )}
 
+        {/* Contêiner do Gráfico com altura fixa interna */}
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
@@ -128,44 +111,30 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PIZZA (DONUT)
+  // ✅ PERFIL PIZZA: Gráfico de Pizza
   if (perfil === "pizza") {
     return (
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            {/* Valor Total no centro */}
-            {typeof totalValue === "number" && (
-              <text
-                x="50%"
-                y="50%"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="fill-foreground font-bold"
-                style={{ fontSize: "24px" }}
-              >
-                {totalValue.toLocaleString("pt-BR")}
-              </text>
-            )}
-
             <Pie
               data={data}
               cx="50%"
               cy="50%"
               labelLine={true}
-              label={renderCustomLabel} // ✅ Aplica o rótulo customizado
-              innerRadius={80}   // Restaurado original
-              outerRadius={120}  // Restaurado original
-              paddingAngle={5}   // Restaurado original
+              label={({ name, percent }) =>
+                `${name}: ${(percent * 100).toFixed(1)}%`
+              }
+              innerRadius={80}
+              outerRadius={120}
+              paddingAngle={5}
               fill="#8884d8"
               dataKey="value"
-              isAnimationActive={false}
             >
               {data.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={CHART_COLORS[index % CHART_COLORS.length]}
-                  stroke="none"
                 />
               ))}
             </Pie>
