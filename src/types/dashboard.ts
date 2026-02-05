@@ -50,3 +50,26 @@ export interface AreaInfo {
   nome: string;
   indicadores: IndicatorInfo[];
 }
+
+// ✅ NOVOS TIPOS
+export type TipoIndicador = 'quantidade' | 'distribuicao' | 'serie' | 'evolucao';
+export type PerfilVisualizacao = 'padrao' | 'pizza';
+
+// ✅ INTERFACE COMPLETA DO CATÁLOGO
+export interface CatalogRow {
+  area?: string;
+  indicador_id?: string;
+  indicador_nome?: string;
+  fonte?: string;
+  fonte_url?: string;
+  sheet?: string;
+  range?: string;
+  tipo?: TipoIndicador;           // ✅ Nova coluna
+  perfil?: PerfilVisualizacao;    // ✅ Nova coluna
+  titulo?: string;
+  unidade?: string;
+  territorio_col?: string;
+  data_col?: string;
+  valor_col?: string;
+  territorio_nome?: string;
+}

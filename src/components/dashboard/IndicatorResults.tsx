@@ -14,22 +14,10 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { ChartRenderer } from "@/components/charts/ChartRenderer";
+import type { CatalogRow } from "@/types/dashboard";
 import type { FilterState } from "@/types/dashboard";
 import { getIndicador } from "@/services/sheetsApi";
-
-type CatalogRow = {
-  area?: string;
-  indicador_id?: string;
-  indicador_nome?: string;
-  fonte?: string;
-  fonte_url?: string;
-  sheet?: string;
-  range?: string;
-  tipo?: string;
-  titulo?: string;
-  unidade?: string;
-  territorio_col?: string;
-};
 
 const PRIMARY_COLOR = "#359AD4";
 
