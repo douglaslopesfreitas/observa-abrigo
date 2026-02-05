@@ -54,24 +54,21 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ Função Customizada para o Rótulo (Label)
+  // ✅ Função Customizada para o Rótulo (Apenas quebra de linha e bold)
   const renderCustomLabel = ({ x, y, name, percent }: any) => {
     return (
       <text
         x={x}
         y={y}
         fill="currentColor"
-        textAnchor="middle" // Centraliza o bloco de texto
+        textAnchor="middle"
         dominantBaseline="central"
         className="fill-foreground"
-        style={{ fontSize: "12px" }}
       >
-        {/* Nome do dado em Negrito (Bold) */}
-        <tspan x={x} dy="-0.6em" fontWeight="bold">
+        <tspan x={x} dy="-0.5em" fontWeight="bold">
           {name}
         </tspan>
-        {/* Porcentagem abaixo e centralizada */}
-        <tspan x={x} dy="1.2em" className="fill-muted-foreground">
+        <tspan x={x} dy="1.2em">
           {(percent * 100).toFixed(1)}%
         </tspan>
       </text>
@@ -155,11 +152,11 @@ export function ChartRenderer({
               data={data}
               cx="50%"
               cy="50%"
-              labelLine={true} // Mantém a linha de conexão
-              label={renderCustomLabel} // ✅ Usa a função customizada aqui
-              innerRadius={80}
-              outerRadius={105} // Reduzi um pouco o raio externo para dar espaço ao rótulo fora
-              paddingAngle={5}
+              labelLine={true}
+              label={renderCustomLabel} // ✅ Aplica o rótulo customizado
+              innerRadius={80}   // Restaurado original
+              outerRadius={120}  // Restaurado original
+              paddingAngle={5}   // Restaurado original
               fill="#8884d8"
               dataKey="value"
               isAnimationActive={false}
