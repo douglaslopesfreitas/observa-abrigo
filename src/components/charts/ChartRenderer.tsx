@@ -1,3 +1,45 @@
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
+import type { PerfilVisualizacao } from "@/types/dashboard";
+
+const CHART_COLORS = [
+  "#2674a0",
+  "#E67310",
+  "#FFCE19",
+  "#FFB114",
+  "#0A2E43",
+  "#72C0F8",
+  "#175070",
+  "#C9E3FC",
+  "#f7efba",
+  "#9F5125",
+  "#FA841E",
+  "#02121E",
+];
+
+const PRIMARY_COLOR = "#359AD4";
+
+interface ChartRendererProps {
+  perfil?: PerfilVisualizacao;
+  data: any[];
+  unidade?: string;
+  formatDateBR?: (date: string) => string;
+  showBanner?: boolean;
+  totalValue?: number;
+}
+
 export function ChartRenderer({
   perfil = "padrao",
   data,
@@ -8,19 +50,20 @@ export function ChartRenderer({
 }: ChartRendererProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+      <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
         Sem dados para exibir
       </div>
     );
   }
 
-  // ✅ PERFIL PADRÃO: Banner + Gráfico com altura própria
+  // ✅ PERFIL PADRÃO: Gráfico de Barras
   if (perfil === "padrao") {
     return (
-      <div className="flex flex-col">
+      <div className="flex flex-col w-full">
+        {/* Banner com o número total */}
         {showBanner && typeof totalValue === "number" && (
           <div className="mb-6 rounded-xl border bg-background p-4 text-left">
-            <div className="text-4xl font-bold tracking-tight text-foreground">
+            <div className="text-4xl font-semibold tracking-tight text-foreground">
               {totalValue.toLocaleString("pt-BR")}
             </div>
             {unidade && (
@@ -31,7 +74,7 @@ export function ChartRenderer({
           </div>
         )}
 
-        {/* ✅ Damos a altura fixa apenas para esta div do gráfico */}
+        {/* Contêiner do Gráfico com altura fixa interna */}
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
@@ -68,10 +111,10 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PIZZA: Gráfico com altura própria
+  // ✅ PERFIL PIZZA: Gráfico de Pizza
   if (perfil === "pizza") {
     return (
-      <div className="h-80 w-full"> {/* ✅ Altura fixa aqui também */}
+      <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -101,9 +144,5 @@ export function ChartRenderer({
     );
   }
 
-  return (
-    <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-      Perfil "{perfil}" não implementado
-    </div>
-  );
+  return null;
 }

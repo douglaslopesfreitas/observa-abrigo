@@ -486,26 +486,32 @@ const parsed: ParsedRow[] = body.map((r) => {
             )}
           </div>
         </div>
+{/* ====== Fotografia atual ====== */}
+{view === "foto" && (
+  <>
+    <div className="mt-4">
+      {/* ⚠️ REMOVA A DIV h-80 QUE FICAVA AQUI EM VOLTA DO CHARTRENDERER ⚠️ */}
+      <ChartRenderer
+        perfil={meta?.perfil || "padrao"}
+        data={fotografiaAtual?.fotoData || []}
+        unidade={meta?.unidade}
+        formatDateBR={formatDateBR}
+        showBanner={meta?.perfil === "padrao"}
+        totalValue={fotografiaAtual?.total}
+      />
+    </div>
 
-        {/* ====== Fotografia atual ====== */}
-        {view === "foto" && (
-          <div className="mt-4">
-            <div className="h-80">
-              <ChartRenderer
-                perfil={meta?.perfil || "padrao"}
-                data={fotografiaAtual?.fotoData || []}
-                unidade={meta?.unidade}
-                formatDateBR={formatDateBR}
-                showBanner={meta?.perfil === "padrao"}
-                totalValue={fotografiaAtual?.total}
-              />
-            </div>
-            <div className="mt-3 space-y-1">
-              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-              {lastDate && <div className="text-sm text-muted-foreground">Referência: {formatDateBR(lastDate)}</div>}
-            </div>
-          </div>
-        )}
+    {/* Fonte + Referência */}
+    <div className="mt-3 space-y-1">
+      <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+      {lastDate ? (
+        <div className="text-sm text-muted-foreground">
+          Referência: {formatDateBR(lastDate)}
+        </div>
+      ) : null}
+    </div>
+  </>
+)}
 
         {/* ====== Evolução ====== */}
         {view === "evolucao" && (
