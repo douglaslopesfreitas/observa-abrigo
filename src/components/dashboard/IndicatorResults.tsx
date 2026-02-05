@@ -39,14 +39,14 @@ const CHART_COLORS = [
 type ParsedRow = {
   territorio: string;
   data: string;
-  modalidade: string;
+  categoria: string; // ✅ Mudou de "modalidade" para "categoria"
   valor: number | null;
   fonte: string;
 };
 
 type ViewMode = "foto" | "evolucao" | "composicao";
 
-const TOTAL_LABEL = "Em todos os acolhimentos";
+const TOTAL_LABEL = "Total"; // ✅ Nome genérico
 
 // Retorna null quando a célula está vazia, para não confundir com 0
 function parseNumber(v: unknown): number | null {
@@ -271,25 +271,31 @@ export function IndicatorResults({
         const headers = values[0].map(normalizeHeader);
         const body = values.slice(1);
 
-        const idxTerr = headers.indexOf("territorio");
-        const idxData = headers.indexOf("data");
-        const idxMod = headers.indexOf("modalidade");
-        const idxVal = headers.indexOf("valor");
-        const idxFonte = headers.indexOf("fonte");
+    const idxTerr = headers.indexOf("territorio");
+const idxData = headers.indexOf("data");
+const idxVal = headers.indexOf("valor");
+const idxFonte = headers.indexOf("fonte");
 
-        let lastDateTmp = "";
-        const parsed: ParsedRow[] = body.map((r) => {
-          const rawDate = String(r[idxData] ?? "").trim();
-          if (rawDate) lastDateTmp = rawDate;
+// ✅ Detecta automaticamente a coluna de categoria
+// (ignora as colunas conhecidas)
+const knownCols = ["territorio", "data", "valor", "fonte"];
+const idxCategoria = headers.findIndex(
+  (h, i) => !knownCols.includes(h) && h.trim() !== ""
+);
 
-          return {
-            territorio: String(r[idxTerr] ?? "").trim(),
-            data: rawDate || lastDateTmp, // corrige datas mescladas
-            modalidade: String(r[idxMod] ?? "").trim(),
-            valor: parseNumber(r[idxVal]),
-            fonte: String(r[idxFonte] ?? "").trim(),
-          };
-        });
+       let lastDateTmp = "";
+const parsed: ParsedRow[] = body.map((r) => {
+  const rawDate = String(r[idxData] ?? "").trim();
+  if (rawDate) lastDateTmp = rawDate;
+
+  return {
+    territorio: String(r[idxTerr] ?? "").trim(),
+    data: rawDate || lastDateTmp, // corrige datas mescladas
+    categoria: idxCategoria >= 0 ? String(r[idxCategoria] ?? "").trim() : "", // ✅ Usa a coluna detectada
+    valor: parseNumber(r[idxVal]),
+    fonte: String(r[idxFonte] ?? "").trim(),
+  };
+});
 
         setRows(parsed);
       } catch (e: any) {
@@ -322,19 +328,19 @@ export function IndicatorResults({
 
   // Modalidades (exceto a linha "Em todos os acolhimentos")
   const modalities = useMemo(() => {
-    const set = new Set<string>();
-    filtered.forEach((r) => {
-      if (r.modalidade && r.modalidade !== TOTAL_LABEL) set.add(r.modalidade);
-    });
-    return Array.from(set);
-  }, [filtered]);
+  const set = new Set<string>();
+  filtered.forEach((r) => {
+    if (r.categoria && r.categoria !== TOTAL_LABEL) set.add(r.categoria);
+  });
+  return Array.from(set);
+}, [filtered]);
 
   // ===== Fotografia atual =====
   const fotografiaAtual = useMemo(() => {
     if (!lastDate) return null;
 
     const totalRow = filtered.find(
-      (r) => r.data === lastDate && r.modalidade === TOTAL_LABEL
+      (r) => r.data === lastDate && r.categoria === TOTAL_LABEL
     );
 
     const total =
@@ -345,8 +351,8 @@ export function IndicatorResults({
               .filter(
                 (r) =>
                   r.data === lastDate &&
-                  r.modalidade &&
-                  r.modalidade !== TOTAL_LABEL
+                  r.categoria &&
+                  r.categoria !== TOTAL_LABEL
               )
               .map((r) => r.valor)
           );
@@ -355,11 +361,11 @@ export function IndicatorResults({
     filtered
       .filter(
         (r) =>
-          r.data === lastDate && r.modalidade && r.modalidade !== TOTAL_LABEL
+          r.data === lastDate && r.categoria && r.categoria !== TOTAL_LABEL
       )
       .forEach((r) => {
         const v = typeof r.valor === "number" ? r.valor : 0;
-        byMod.set(r.modalidade, (byMod.get(r.modalidade) || 0) + v);
+        byMod.set(r.categoria, (byMod.get(r.categoria) || 0) + v);
       });
 
     const fotoData = Array.from(byMod.entries())
@@ -379,7 +385,7 @@ export function IndicatorResults({
     if (!dates.length) return [];
     return dates.map((d) => {
       const totalRow = filtered.find(
-        (r) => r.data === d && r.modalidade === TOTAL_LABEL
+        (r) => r.data === d && r.categoria === TOTAL_LABEL
       );
 
       const total =
@@ -387,7 +393,7 @@ export function IndicatorResults({
           ? totalRow.valor
           : sumVals(
               filtered
-                .filter((r) => r.data === d && r.modalidade !== TOTAL_LABEL)
+                .filter((r) => r.data === d && r.categoria !== TOTAL_LABEL)
                 .map((r) => r.valor)
             );
 
@@ -400,18 +406,16 @@ export function IndicatorResults({
     if (!dates.length) return { data: [] as any[], keys: [] as string[] };
 
     const keptMods = modalities.filter((m) =>
-      filtered.some((r) => r.modalidade === m && (r.valor || 0) > 0)
+      filtered.some((r) => r.categoria === m && (r.valor || 0) > 0)
     );
 
     const sortedMods = [...keptMods].sort((a, b) => {
       const sumA = filtered
-        .filter((r) => r.modalidade === a)
+        .filter((r) => r.categoria === a)
         .reduce((acc, r) => acc + (r.valor || 0), 0);
-
       const sumB = filtered
-        .filter((r) => r.modalidade === b)
+        .filter((r) => r.categoria === b)
         .reduce((acc, r) => acc + (r.valor || 0), 0);
-
       return sumA - sumB;
     });
 
@@ -420,40 +424,28 @@ export function IndicatorResults({
 
     dates.forEach((d) => {
       if (!d) return;
-
       if (!byDate.has(d)) byDate.set(d, { date: d });
       const obj = byDate.get(d);
-
-      keys.forEach((k) => {
-        if (obj[k] == null) obj[k] = 0;
-      });
+      keys.forEach((k) => { if (obj[k] == null) obj[k] = 0; });
 
       const rowsOnDate = filtered.filter((r) => r.data === d);
-
       const hasBreakdown = rowsOnDate.some(
-        (r) =>
-          r.modalidade &&
-          r.modalidade !== TOTAL_LABEL &&
-          typeof r.valor === "number" &&
-          r.valor > 0
+        (r) => r.categoria && r.categoria !== TOTAL_LABEL && (r.valor || 0) > 0
       );
 
       rowsOnDate.forEach((r) => {
-        if (!r.modalidade) return;
-        if (hasBreakdown && r.modalidade === TOTAL_LABEL) return;
-        if (!keys.includes(r.modalidade)) return;
-
+        if (!r.categoria) return;
+        if (hasBreakdown && r.categoria === TOTAL_LABEL) return;
+        if (!keys.includes(r.categoria)) return;
         const v = typeof r.valor === "number" ? r.valor : 0;
-        obj[r.modalidade] = (obj[r.modalidade] || 0) + v;
+        obj[r.categoria] = (obj[r.categoria] || 0) + v;
       });
 
       const topKey = [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
       obj.__top = topKey;
     });
 
-    const data = dates.map((d) => byDate.get(d)).filter(Boolean);
-
-    return { data, keys };
+    return { data: dates.map((d) => byDate.get(d)).filter(Boolean), keys };
   }, [dates, filtered, modalities]);
 
   if (!filters.indicador) return null;
@@ -467,140 +459,52 @@ export function IndicatorResults({
             <h3 className="section-title">
               {meta?.titulo || meta?.indicador_nome || "Indicador"}
             </h3>
-
-            {loading ? (
-              <div className="text-sm text-muted-foreground mt-1">
-                Carregando dados...
-              </div>
-            ) : null}
-
-            {err ? (
-              <div className="text-sm text-destructive mt-1">
-                Erro ao carregar indicador: {err}
-              </div>
-            ) : null}
+            {loading && <div className="text-sm text-muted-foreground mt-1">Carregando dados...</div>}
+            {err && <div className="text-sm text-destructive mt-1">Erro: {err}</div>}
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              type="button"
               onClick={() => setView("foto")}
-              className={`h-9 px-3 rounded-md border text-sm transition ${
-                view === "foto"
-                  ? "bg-[#359ad4] text-white border-[#359ad4]"
-                  : "bg-background text-foreground border-border hover:bg-muted"
-              }`}
+              className={`h-9 px-3 rounded-md border text-sm transition ${view === "foto" ? "bg-[#359ad4] text-white" : "bg-background"}`}
             >
               Fotografia atual
             </button>
-
             <button
-              type="button"
               onClick={() => setView("evolucao")}
-              className={`h-9 px-3 rounded-md border text-sm transition ${
-                view === "evolucao"
-                  ? "bg-[#359ad4] text-white border-[#359ad4]"
-                  : "bg-background text-foreground border-border hover:bg-muted"
-              }`}
+              className={`h-9 px-3 rounded-md border text-sm transition ${view === "evolucao" ? "bg-[#359ad4] text-white" : "bg-background"}`}
             >
               Evolução
             </button>
-
-            <button
-              type="button"
-              onClick={() => setView("composicao")}
-              className={`h-9 px-3 rounded-md border text-sm transition ${
-                view === "composicao"
-                  ? "bg-[#359ad4] text-white border-[#359ad4]"
-                  : "bg-background text-foreground border-border hover:bg-muted"
-              }`}
-            >
-              Por modalidade de acolhimento
-            </button>
+            {meta?.perfil !== "pizza" && (
+              <button
+                onClick={() => setView("composicao")}
+                className={`h-9 px-3 rounded-md border text-sm transition ${view === "composicao" ? "bg-[#359ad4] text-white" : "bg-background"}`}
+              >
+                {meta?.indicador_id === "abrigos" ? "Por tipo de entidade" : "Por modalidade"}
+              </button>
+            )}
           </div>
         </div>
 
         {/* ====== Fotografia atual ====== */}
         {view === "foto" && (
-          <>
-            <div className="mt-4 rounded-xl border bg-background p-4">
-              <div className="mt-2 text-4xl font-semibold tracking-tight text-foreground">
-                {typeof fotografiaAtual?.total === "number"
-                  ? fotografiaAtual.total.toLocaleString("pt-BR")
-                  : "-"}
-              </div>
-
-              {meta?.unidade ? (
-                <div className="text-sm text-muted-foreground mt-1">
-                  {meta.unidade}
-                </div>
-              ) : null}
+          <div className="mt-4">
+            <div className="h-80">
+              <ChartRenderer
+                perfil={meta?.perfil || "padrao"}
+                data={fotografiaAtual?.fotoData || []}
+                unidade={meta?.unidade}
+                formatDateBR={formatDateBR}
+                showBanner={meta?.perfil === "padrao"}
+                totalValue={fotografiaAtual?.total}
+              />
             </div>
-
-            <div className="h-80 mt-6">
-              {!fotografiaAtual?.fotoData ||
-              fotografiaAtual.fotoData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Sem dados de modalidades para exibir na fotografia atual
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={fotografiaAtual.fotoData}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="hsl(var(--border))"
-                    />
-                    <XAxis
-                      dataKey="name"
-                      tick={{
-                        fontSize: 11,
-                        fill: "hsl(var(--muted-foreground))",
-                        dy: 10,
-                      }}
-                      axisLine={{ stroke: "hsl(var(--border))" }}
-                      interval={0}
-                      angle={0}
-                      textAnchor="middle"
-                      height={60}
-                    />
-                    <YAxis
-                      tick={{
-                        fontSize: 12,
-                        fill: "hsl(var(--muted-foreground))",
-                      }}
-                      axisLine={{ stroke: "hsl(var(--border))" }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "12px",
-                      }}
-                      formatter={(value: number) => [
-                        Number(value).toLocaleString("pt-BR"),
-                        meta?.unidade || "valor",
-                      ]}
-                    />
-                    <Bar
-                      dataKey="value"
-                      fill={PRIMARY_COLOR}
-                      radius={[8, 8, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-
-            {/* ✅ Fonte + Referência (embaixo do gráfico) */}
             <div className="mt-3 space-y-1">
               <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-              {lastDate ? (
-                <div className="text-sm text-muted-foreground">
-                  Referência: {formatDateBR(lastDate)}
-                </div>
-              ) : null}
+              {lastDate && <div className="text-sm text-muted-foreground">Referência: {formatDateBR(lastDate)}</div>}
             </div>
-          </>
+          </div>
         )}
 
         {/* ====== Evolução ====== */}
@@ -608,59 +512,16 @@ export function IndicatorResults({
           <div className="mt-4">
             <div className="h-80 mt-6">
               {lineData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Sem dados para exibir
-                </div>
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sem dados</div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={lineData}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="hsl(var(--border))"
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tick={{
-                        fontSize: 12,
-                        fill: "hsl(var(--muted-foreground))",
-                      }}
-                      axisLine={{ stroke: "hsl(var(--border))" }}
-                      tickFormatter={(v) => formatDateBR(String(v))}
-                    />
-                    <YAxis
-                      tick={{
-                        fontSize: 12,
-                        fill: "hsl(var(--muted-foreground))",
-                      }}
-                      axisLine={{ stroke: "hsl(var(--border))" }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "12px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      }}
-                      labelFormatter={(l) => formatDateBR(String(l))}
-                      formatter={(value: number) => [
-                        Number(value).toLocaleString("pt-BR"),
-                        meta?.unidade || "valor",
-                      ]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke={PRIMARY_COLOR}
-                      strokeWidth={2}
-                      dot={{ fill: CHART_COLORS[0], strokeWidth: 2, r: 4 }}
-                      activeDot={{ r: 6, strokeWidth: 0 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <ChartRenderer
+                  tipo={meta?.perfil === "pizza" ? "barra" : "linha"}
+                  data={lineData.map(d => ({ name: d.date, value: d.value }))}
+                  unidade={meta?.unidade}
+                  formatDateBR={formatDateBR}
+                />
               )}
             </div>
-
-            {/* ✅ Só Fonte (embaixo do gráfico) */}
             <div className="mt-3">
               <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
             </div>
@@ -671,86 +532,22 @@ export function IndicatorResults({
         {view === "composicao" && (
           <div className="mt-4">
             <div className="h-96 mt-6">
-              {stacked.data.length === 0 || stacked.keys.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Sem dados de modalidades para empilhar
-                </div>
+              {stacked.data.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sem dados detalhados</div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stacked.data}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="hsl(var(--border))"
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tick={{
-                        fontSize: 12,
-                        fill: "hsl(var(--muted-foreground))",
-                      }}
-                      axisLine={{ stroke: "hsl(var(--border))" }}
-                      tickFormatter={(v) => formatDateBR(String(v))}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      tick={{
-                        fontSize: 12,
-                        fill: "hsl(var(--muted-foreground))",
-                      }}
-                      axisLine={{ stroke: "hsl(var(--border))" }}
-                    />
-                    <Tooltip
-                      content={<CompositionTooltip unidade={meta?.unidade} />}
-                    />
-
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={formatDateBR} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
                     {stacked.keys.map((k, i) => (
-                      <Bar
-                        key={k}
-                        dataKey={k}
-                        stackId="a"
-                        fill={CHART_COLORS[i % CHART_COLORS.length]}
-                        isAnimationActive={false}
-                        shape={(props: any) => {
-                          const { x, y, width, height, fill, payload } = props;
-                          if (!width || !height || height <= 0) return null;
-
-                          const isTop = payload?.__top === k;
-                          const R = 8;
-                          const r = isTop
-                            ? Math.min(R, width / 2, height / 2)
-                            : 0;
-
-                          if (!r) {
-                            return (
-                              <rect
-                                x={x}
-                                y={y}
-                                width={width}
-                                height={height}
-                                fill={fill}
-                              />
-                            );
-                          }
-
-                          const d = `
-                            M ${x} ${y + r}
-                            Q ${x} ${y} ${x + r} ${y}
-                            L ${x + width - r} ${y}
-                            Q ${x + width} ${y} ${x + width} ${y + r}
-                            L ${x + width} ${y + height}
-                            L ${x} ${y + height}
-                            Z
-                          `;
-                          return <path d={d} fill={fill} />;
-                        }}
-                      />
+                      <Bar key={k} dataKey={k} stackId="a" fill={CHART_COLORS[i % CHART_COLORS.length]} isAnimationActive={false} />
                     ))}
                   </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
-
-            {/* ✅ Só Fonte (embaixo do gráfico) */}
             <div className="mt-3">
               <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
             </div>
