@@ -77,8 +77,6 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
       : rows;
 
     const fromCatalog = uniq(rows2.map((r) => normStr((r as any).territorio_nome)));
-
-    // Fallback: se o catálogo não traz territórios, libera RJ para seguir
     const all = fromCatalog.length ? fromCatalog : ["RJ"];
 
     if (!territorioSearch) return all;
@@ -86,33 +84,21 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
     return all.filter((t) => t.toLowerCase().includes(q));
   }, [catalog, filters.indicador, filters.fonte, territorioSearch]);
 
-  // Auto selecionar quando só há 1 opção
+  // Efeitos de Auto-seleção
   useEffect(() => {
     if (indicadores.length === 1 && !filters.indicador) {
       onFilterChange({ ...filters, indicador: indicadores[0].id });
     }
   }, [indicadores, filters, onFilterChange]);
 
- useEffect(() => {
-  // ✅ Se só existe 1 fonte possível, ela precisa virar a fonte ativa
-  // para evitar misturar dados de fontes diferentes na mesma data.
-  if (fontes.length === 1 && filters.fonte !== fontes[0]) {
-    onFilterChange({
-      ...filters,
-      fonte: fontes[0],
-      territorio: null, // território depende da fonte
-    });
-  }
-
-  // ✅ Se a fonte selecionada deixou de existir (mudou indicador/área), limpa.
-  if (fontes.length > 1 && filters.fonte && !fontes.includes(filters.fonte)) {
-    onFilterChange({
-      ...filters,
-      fonte: null,
-      territorio: null,
-    });
-  }
-}, [fontes, filters, onFilterChange]);
+  useEffect(() => {
+    if (fontes.length === 1 && filters.fonte !== fontes[0]) {
+      onFilterChange({ ...filters, fonte: fontes[0], territorio: null });
+    }
+    if (fontes.length > 1 && filters.fonte && !fontes.includes(filters.fonte)) {
+      onFilterChange({ ...filters, fonte: null, territorio: null });
+    }
+  }, [fontes, filters, onFilterChange]);
 
   useEffect(() => {
     if (territorios.length === 1 && !filters.territorio) {
@@ -120,61 +106,34 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
     }
   }, [territorios, filters, onFilterChange]);
 
+  // Handlers
   const handleAreaChange = (value: string) => {
     setTerritorioSearch("");
-    onFilterChange({
-      area: value,
-      indicador: null,
-      abaSheet: null,
-      fonte: null,
-      territorio: null,
-    });
+    onFilterChange({ area: value, indicador: null, fonte: null, territorio: null });
   };
 
   const handleIndicadorChange = (value: string) => {
     setTerritorioSearch("");
-    onFilterChange({
-      ...filters,
-      indicador: value,
-      abaSheet: null,
-      fonte: null,
-      territorio: null,
-    });
+    onFilterChange({ ...filters, indicador: value, fonte: null, territorio: null });
   };
 
   const handleFonteChange = (value: string) => {
     setTerritorioSearch("");
-    onFilterChange({
-      ...filters,
-      fonte: value,
-      territorio: null,
-    });
+    onFilterChange({ ...filters, fonte: value, territorio: null });
   };
 
   const handleTerritorioChange = (value: string) => {
-    onFilterChange({
-      ...filters,
-      territorio: value,
-    });
+    onFilterChange({ ...filters, territorio: value });
   };
 
   const handleClearFilters = () => {
     setTerritorioSearch("");
-    onFilterChange({
-      area: null,
-      indicador: null,
-      abaSheet: null,
-      fonte: null,
-      territorio: null,
-    });
+    onFilterChange({ area: null, indicador: null, fonte: null, territorio: null });
   };
 
   const hasFilters = Boolean(filters.area || filters.indicador || filters.fonte || filters.territorio);
   const showFonteFilter = fontes.length > 1;
 
-  // Cores pedidas:
-  // hover/option highlight: #175070 com texto branco
-  // option selected: #359ad4 com texto branco
   const itemClass =
     "data-[highlighted]:bg-[#175070] data-[highlighted]:text-white " +
     "data-[state=checked]:bg-[#359ad4] data-[state=checked]:text-white " +
@@ -188,6 +147,7 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* 1. ÁREA */}
         <div>
           <label className="filter-label">Área</label>
           <Select value={filters.area || ""} onValueChange={handleAreaChange}>
@@ -195,7 +155,7 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
               <SelectValue placeholder={areas.length ? "Selecione a área" : "Sem opções"} />
             </SelectTrigger>
             <SelectContent className="bg-popover z-50">
-              {(areas ?? []).map((area) => (
+              {areas.map((area) => (
                 <SelectItem key={area.id} value={area.nome} className={itemClass}>
                   {area.nome}
                 </SelectItem>
@@ -204,20 +164,21 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
           </Select>
         </div>
 
+        {/* 2. INDICADOR */}
         <div>
           <label className="filter-label">Indicador</label>
           <Select
             value={filters.indicador || ""}
             onValueChange={handleIndicadorChange}
-            disabled={!filters.area || (indicadores ?? []).length === 0}
+            disabled={!filters.area || indicadores.length === 0}
           >
             <SelectTrigger className="bg-background">
-              <SelectValue
-                placeholder={!filters.area ? "Selecione a área primeiro" : "Selecione o indicador"}
-              />
+              <div className="truncate text-left w-full">
+                <SelectValue placeholder={!filters.area ? "Selecione a área primeiro" : "Selecione o indicador"} />
+              </div>
             </SelectTrigger>
             <SelectContent className="bg-popover z-50">
-              {(indicadores ?? []).map((ind) => (
+              {indicadores.map((ind) => (
                 <SelectItem key={ind.id} value={ind.id} className={itemClass}>
                   {ind.nome}
                 </SelectItem>
@@ -226,21 +187,18 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
           </Select>
         </div>
 
+        {/* 3. FONTE */}
         <div>
           <label className="filter-label">Fonte</label>
           {showFonteFilter ? (
-            <Select
-              value={filters.fonte || ""}
-              onValueChange={handleFonteChange}
-              disabled={!filters.indicador}
-            >
+            <Select value={filters.fonte || ""} onValueChange={handleFonteChange}>
               <SelectTrigger className="bg-background">
-                <SelectValue
-                  placeholder={!filters.indicador ? "Selecione o indicador" : "Selecione a fonte"}
-                />
+                <div className="truncate text-left w-full">
+                  <SelectValue placeholder="Selecione a fonte" />
+                </div>
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
-                {(fontes ?? []).map((fonte) => (
+                {fontes.map((fonte) => (
                   <SelectItem key={fonte} value={fonte} className={itemClass}>
                     {fonte}
                   </SelectItem>
@@ -248,13 +206,19 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
               </SelectContent>
             </Select>
           ) : (
-            <div className="h-10 flex items-center text-sm text-muted-foreground px-3 rounded-md border bg-background">
-              {filters.fonte ? filters.fonte : !filters.indicador ? "Selecione o indicador" : "Única fonte disponível"}
+            <div 
+              className="h-10 flex items-center text-sm text-muted-foreground px-3 rounded-md border bg-background truncate cursor-default"
+              title={filters.fonte || ""}
+            >
+              <span className="truncate">
+                {filters.fonte ? filters.fonte : !filters.indicador ? "Aguardando indicador" : "Única fonte"}
+              </span>
             </div>
           )}
         </div>
 
-        <div className="lg:col-span-1">
+        {/* 4. TERRITÓRIO */}
+        <div>
           <label className="filter-label">Território</label>
           <Select
             value={filters.territorio || ""}
@@ -262,57 +226,41 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
             disabled={!filters.indicador}
           >
             <SelectTrigger className="bg-background">
-              <SelectValue
-                placeholder={
-                  !filters.indicador
-                    ? "Selecione o indicador"
-                    : territorios.length
-                    ? "Selecione o território"
-                    : "Sem opções"
-                }
-              />
+              <SelectValue placeholder={!filters.indicador ? "Selecione o indicador" : "Selecione"} />
             </SelectTrigger>
             <SelectContent className="bg-popover z-50 max-h-64">
               <div className="px-2 py-1.5 sticky top-0 bg-popover">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar território..."
+                    placeholder="Buscar..."
                     value={territorioSearch}
                     onChange={(e) => setTerritorioSearch(e.target.value)}
                     className="pl-8 h-9"
                   />
                 </div>
               </div>
-
-              {territorios.length === 0 ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhum território encontrado
-                </div>
-              ) : (
-                (territorios ?? []).map((terr) => (
-                  <SelectItem key={terr} value={terr} className={itemClass}>
-                    {terr}
-                  </SelectItem>
-                ))
-              )}
+              {territorios.map((terr) => (
+                <SelectItem key={terr} value={terr} className={itemClass}>
+                  {terr}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="flex items-end justify-end">
-          {hasFilters ? (
+        {/* 5. BOTÃO LIMPAR */}
+        <div className="flex items-end">
+          {hasFilters && (
             <Button
               variant="outline"
               size="sm"
               onClick={handleClearFilters}
-              className="gap-1.5 hover:bg-[#359ad4] hover:text-white hover:border-[#359ad4] focus-visible:ring-[#359ad4]"
+              className="w-full gap-1.5 hover:bg-[#359ad4] hover:text-white hover:border-[#359ad4]"
             >
               <X className="h-4 w-4" />
               Limpar filtros
             </Button>
-          ) : (
-            <div className="h-9" />
           )}
         </div>
       </div>
