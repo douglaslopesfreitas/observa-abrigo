@@ -146,9 +146,10 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
         <h2 className="font-semibold text-foreground">Explorar Indicadores</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* 1. ÁREA */}
-        <div>
+      {/* ✅ Grid de 12 colunas para controle fino dos tamanhos */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+        {/* 1. ÁREA - 2 colunas */}
+        <div className="lg:col-span-2">
           <label className="filter-label">Área</label>
           <Select value={filters.area || ""} onValueChange={handleAreaChange}>
             <SelectTrigger className="bg-background">
@@ -164,8 +165,8 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
           </Select>
         </div>
 
-        {/* 2. INDICADOR */}
-        <div>
+        {/* 2. INDICADOR - 3 colunas */}
+        <div className="lg:col-span-3">
           <label className="filter-label">Indicador</label>
           <Select
             value={filters.indicador || ""}
@@ -187,8 +188,8 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
           </Select>
         </div>
 
-        {/* 3. FONTE */}
-        <div>
+        {/* 3. FONTE - 4 colunas (MAIOR) ✅ */}
+        <div className="lg:col-span-4">
           <label className="filter-label">Fonte</label>
           {showFonteFilter ? (
             <Select value={filters.fonte || ""} onValueChange={handleFonteChange}>
@@ -217,8 +218,8 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
           )}
         </div>
 
-        {/* 4. TERRITÓRIO */}
-        <div>
+        {/* 4. TERRITÓRIO - 2 colunas (menor) ✅ */}
+        <div className="lg:col-span-2">
           <label className="filter-label">Território</label>
           <Select
             value={filters.territorio || ""}
@@ -249,8 +250,8 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
           </Select>
         </div>
 
-        {/* 5. BOTÃO LIMPAR */}
-        <div className="flex items-end">
+        {/* 5. BOTÃO LIMPAR - 1 coluna (menor) ✅ */}
+        <div className="lg:col-span-1 flex items-end">
           {hasFilters && (
             <Button
               variant="outline"
@@ -259,7 +260,8 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
               className="w-full gap-1.5 hover:bg-[#359ad4] hover:text-white hover:border-[#359ad4]"
             >
               <X className="h-4 w-4" />
-              Limpar filtros
+              <span className="hidden xl:inline">Limpar filtros</span>
+              <span className="xl:hidden">Limpar</span>
             </Button>
           )}
         </div>
