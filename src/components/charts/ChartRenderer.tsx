@@ -1,15 +1,13 @@
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
-  CartesianGrid,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
+  CartesianGrid,
   Tooltip,
 } from "recharts";
 import type { PerfilVisualizacao } from "@/types/dashboard";
@@ -56,11 +54,34 @@ export function ChartRenderer({
     );
   }
 
+  // ✅ Função Customizada para o Rótulo (Label)
+  const renderCustomLabel = ({ x, y, name, percent }: any) => {
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="currentColor"
+        textAnchor="middle" // Centraliza o bloco de texto
+        dominantBaseline="central"
+        className="fill-foreground"
+        style={{ fontSize: "12px" }}
+      >
+        {/* Nome do dado em Negrito (Bold) */}
+        <tspan x={x} dy="-0.6em" fontWeight="bold">
+          {name}
+        </tspan>
+        {/* Porcentagem abaixo e centralizada */}
+        <tspan x={x} dy="1.2em" className="fill-muted-foreground">
+          {(percent * 100).toFixed(1)}%
+        </tspan>
+      </text>
+    );
+  };
+
   // ✅ PERFIL PADRÃO: Gráfico de Barras
   if (perfil === "padrao") {
     return (
       <div className="flex flex-col w-full">
-        {/* Banner com o número total */}
         {showBanner && typeof totalValue === "number" && (
           <div className="mb-6 rounded-xl border bg-background p-4 text-left">
             <div className="text-4xl font-semibold tracking-tight text-foreground">
@@ -74,7 +95,6 @@ export function ChartRenderer({
           </div>
         )}
 
-        {/* Contêiner do Gráfico com altura fixa interna */}
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
@@ -111,30 +131,44 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PIZZA: Gráfico de Pizza
+  // ✅ PERFIL PIZZA (DONUT)
   if (perfil === "pizza") {
     return (
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
+            {/* Valor Total no centro */}
+            {typeof totalValue === "number" && (
+              <text
+                x="50%"
+                y="50%"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="fill-foreground font-bold"
+                style={{ fontSize: "24px" }}
+              >
+                {totalValue.toLocaleString("pt-BR")}
+              </text>
+            )}
+
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              labelLine={true}
-              label={({ name, percent }) =>
-                `${name}: ${(percent * 100).toFixed(1)}%`
-              }
+              labelLine={true} // Mantém a linha de conexão
+              label={renderCustomLabel} // ✅ Usa a função customizada aqui
               innerRadius={80}
-              outerRadius={120}
+              outerRadius={105} // Reduzi um pouco o raio externo para dar espaço ao rótulo fora
               paddingAngle={5}
               fill="#8884d8"
               dataKey="value"
+              isAnimationActive={false}
             >
               {data.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={CHART_COLORS[index % CHART_COLORS.length]}
+                  stroke="none"
                 />
               ))}
             </Pie>
