@@ -17,9 +17,12 @@ type CatalogRow = {
   sheet?: string;
   range?: string;
   tipo?: string;
+  perfil?: string; // ✅ Adicionado
   titulo?: string;
   unidade?: string;
   territorio_col?: string;
+  data_col?: string; // ✅ Adicionado
+  valor_col?: string; // ✅ Adicionado
 };
 
 function parseNumberOrNull(v: unknown): number | null {
@@ -31,28 +34,20 @@ function parseNumberOrNull(v: unknown): number | null {
 
 function rowsToCatalog(values: any[][]): CatalogRow[] {
   if (!Array.isArray(values) || values.length < 2) return [];
-  const headers = values[0].map((h) => String(h ?? "").trim());
+  
+  // Transforma os cabeçalhos em minúsculo e remove espaços
+  const headers = values[0].map((h) => String(h ?? "").trim().toLowerCase());
   const body = values.slice(1);
 
   return body.map((r) => {
     const obj: any = {};
-    headers.forEach((h, i) => {
-      obj[h] = r[i];
+    headers.forEach((headerName, index) => {
+      // Cria a propriedade no objeto com o valor da coluna correspondente de forma automática
+      if (headerName) {
+        obj[headerName] = String(r[index] ?? "").trim();
+      }
     });
-
-    return {
-      area: String(obj["area"] ?? "").trim(),
-      indicador_id: String(obj["indicador_id"] ?? "").trim(),
-      indicador_nome: String(obj["indicador_nome"] ?? "").trim(),
-      fonte: String(obj["fonte"] ?? "").trim(),
-      fonte_url: String(obj["fonte_url"] ?? "").trim(),
-      sheet: String(obj["sheet"] ?? "").trim(),
-      range: String(obj["range"] ?? "").trim(),
-      tipo: String(obj["tipo"] ?? "").trim(),
-      titulo: String(obj["titulo"] ?? "").trim(),
-      unidade: String(obj["unidade"] ?? "").trim(),
-      territorio_col: String(obj["territorio_col"] ?? "").trim(),
-    };
+    return obj as CatalogRow;
   });
 }
 
@@ -102,7 +97,7 @@ export default function Index() {
     async function loadCatalogo() {
       setCatalogoLoading(true);
       try {
-        const d = await getCatalogo("catalogo!A:K");
+        const d = await getCatalogo("catalogo!A:Z");
         const values: any[][] = d.values || [];
         setCatalogo(rowsToCatalog(values));
       } catch {
