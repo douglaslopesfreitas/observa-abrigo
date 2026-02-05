@@ -32,8 +32,10 @@ const CHART_COLORS = [
 const PRIMARY_COLOR = "#359AD4";
 
 interface ChartRendererProps {
-  perfil?: PerfilVisualizacao;
+  // ✅ Adicionado suporte aos novos tipos de evolução
+  perfil?: PerfilVisualizacao | "linha" | "barras_agrupadas"; 
   data: any[];
+  keys?: string[]; // ✅ Adicionado para as barras lado a lado
   unidade?: string;
   formatDateBR?: (date: string) => string;
   showBanner?: boolean;
@@ -43,6 +45,7 @@ interface ChartRendererProps {
 export function ChartRenderer({
   perfil = "padrao",
   data,
+  keys = ["value"], // ✅ Valor padrão é "value" para não quebrar o padrão
   unidade,
   formatDateBR = (d) => d,
   showBanner = false,
@@ -56,11 +59,51 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PADRÃO: Gráfico de Barras
+  // ✅ NOVO: Gráfico de Linha (Para evolução do perfil padrão)
+  if (perfil === "linha") {
+    return (
+      <div className="h-80 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={formatDateBR} />
+            <YAxis tick={{ fontSize: 12 }} />
+            <Tooltip labelFormatter={formatDateBR} />
+            <Line type="monotone" dataKey="value" stroke={PRIMARY_COLOR} strokeWidth={2} dot={{ r: 4 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  // ✅ NOVO: Gráfico de Barras Agrupadas (Lado a lado - para evolução da pizza)
+  if (perfil === "barras_agrupadas") {
+    return (
+      <div className="h-80 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={formatDateBR} />
+            <YAxis tick={{ fontSize: 12 }} />
+            <Tooltip labelFormatter={formatDateBR} />
+            {keys.map((key, index) => (
+              <Bar 
+                key={key} 
+                dataKey={key} 
+                fill={CHART_COLORS[index % CHART_COLORS.length]} 
+                radius={[4, 4, 0, 0]} 
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  // ✅ PERFIL PADRÃO (Mantido exatamente como você enviou)
   if (perfil === "padrao") {
     return (
       <div className="flex flex-col w-full">
-        {/* Banner com o número total */}
         {showBanner && typeof totalValue === "number" && (
           <div className="mb-6 rounded-xl border bg-background p-4 text-left">
             <div className="text-4xl font-semibold tracking-tight text-foreground">
@@ -74,7 +117,6 @@ export function ChartRenderer({
           </div>
         )}
 
-        {/* Contêiner do Gráfico com altura fixa interna */}
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
@@ -111,7 +153,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PIZZA: Gráfico de Pizza
+  // ✅ PERFIL PIZZA: Gráfico de Pizza (Mantido exatamente como você enviou)
   if (perfil === "pizza") {
     return (
       <div className="h-80 w-full">
