@@ -1,4 +1,4 @@
-typescriptimport { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, X, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -261,8 +261,7 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
               className="w-full h-10 gap-1.5 hover:bg-[#359ad4] hover:text-white hover:border-[#359ad4]"
             >
               <X className="h-4 w-4" />
-              <span className="hidden xl:inline">Limpar filtros</span>
-              <span className="xl:hidden">Limpar</span>
+              Limpar
             </Button>
           )}
         </div>
