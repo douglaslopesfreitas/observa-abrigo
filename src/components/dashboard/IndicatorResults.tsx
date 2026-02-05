@@ -513,16 +513,25 @@ const parsed: ParsedRow[] = body.map((r) => {
   </>
 )}
 
-        {/* ====== Evolução ====== */}
+{/* ====== Evolução ====== */}
         {view === "evolucao" && (
           <div className="mt-4">
             <div className="h-80 mt-6">
               {lineData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sem dados</div>
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Sem dados para exibir na evolução
+                </div>
               ) : (
                 <ChartRenderer
-                  tipo={meta?.perfil === "pizza" ? "barra" : "linha"}
-                  data={lineData.map(d => ({ name: d.date, value: d.value }))}
+                  // ✅ Se for perfil pizza, usa barras lado a lado. Se for padrão, usa linha.
+                  perfil={meta?.perfil === "pizza" ? "barras_agrupadas" : "linha"}
+                  data={
+                    meta?.perfil === "pizza"
+                      ? stacked.data.map((d) => ({ ...d, name: d.date }))
+                      : lineData.map((d) => ({ name: d.date, value: d.value }))
+                  }
+                  // ✅ Envia as categorias (keys) apenas quando for pizza para separar as barras
+                  keys={meta?.perfil === "pizza" ? modalities : ["value"]}
                   unidade={meta?.unidade}
                   formatDateBR={formatDateBR}
                 />
