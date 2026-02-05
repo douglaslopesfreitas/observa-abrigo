@@ -12,6 +12,7 @@ import {
   YAxis,
   Legend,
   LabelList,
+  Tooltip,
 } from "recharts";
 import type { PerfilVisualizacao } from "@/types/dashboard";
 
@@ -42,6 +43,63 @@ interface ChartRendererProps {
   totalValue?: number;
 }
 
+// ✅ Tooltip customizado para gráficos simples (linha e barras padrão)
+function SimpleTooltip({
+  active,
+  payload,
+  label,
+  unidade,
+  formatDateBR,
+}: {
+  active?: boolean;
+  payload?: any[];
+  label?: any;
+  unidade?: string;
+  formatDateBR?: (date: string) => string;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const value = payload[0]?.value;
+  if (value == null) return null;
+
+  return (
+    <div
+      style={{
+        backgroundColor: "hsl(var(--card))",
+        border: "1px solid hsl(var(--border))",
+        borderRadius: "12px",
+        padding: "10px 12px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+        minWidth: 180,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 12,
+          marginBottom: 6,
+          color: "hsl(var(--foreground))",
+          fontWeight: 500,
+        }}
+      >
+        {formatDateBR ? formatDateBR(String(label)) : String(label)}
+      </div>
+
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: "hsl(var(--foreground))",
+        }}
+      >
+        {typeof value === "number"
+          ? value.toLocaleString("pt-BR")
+          : value}
+        {unidade ? ` ${unidade}` : ""}
+      </div>
+    </div>
+  );
+}
+
 export function ChartRenderer({
   perfil = "padrao",
   data,
@@ -59,7 +117,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 1. NOVO: Evolução Quantitativa (LINHA) - SEM TOOLTIP
+  // ✅ 1. Evolução Quantitativa (LINHA) - COM TOOLTIP
   if (perfil === "linha") {
     return (
       <div className="h-80 w-full">
@@ -68,15 +126,25 @@ export function ChartRenderer({
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={formatDateBR} />
             <YAxis tick={{ fontSize: 12 }} />
-            {/* Tooltip removido */}
-            <Line type="monotone" dataKey="value" stroke={PRIMARY_COLOR} strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
+            <Tooltip 
+              content={<SimpleTooltip unidade={unidade} formatDateBR={formatDateBR} />} 
+              cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="value" 
+              stroke={PRIMARY_COLOR} 
+              strokeWidth={2} 
+              dot={{ r: 4 }} 
+              isAnimationActive={false} 
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
     );
   }
 
-  // ✅ 2. NOVO: Evolução de Distribuição (BARRAS AGRUPADAS COM LEGENDA E %) - SEM TOOLTIP
+  // ✅ 2. Evolução de Distribuição (BARRAS AGRUPADAS COM LEGENDA E %) - SEM TOOLTIP
   if (perfil === "barras_agrupadas") {
     return (
       <div className="h-80 w-full">
@@ -85,7 +153,7 @@ export function ChartRenderer({
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={formatDateBR} />
             <YAxis tick={{ fontSize: 12 }} />
-            {/* Tooltip removido */}
+            {/* SEM Tooltip */}
             <Legend verticalAlign="bottom" height={36}/>
             {keys.map((key, index) => (
               <Bar 
@@ -118,7 +186,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PADRÃO (Copiado exatamente do seu código, mas REMOVIDO o Tooltip)
+  // ✅ 3. PERFIL PADRÃO (Barras quantitativas) - COM TOOLTIP
   if (perfil === "padrao") {
     return (
       <div className="flex flex-col w-full">
@@ -152,8 +220,16 @@ export function ChartRenderer({
                 tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                 axisLine={{ stroke: "hsl(var(--border))" }}
               />
-              {/* Tooltip removido conforme solicitado */}
-              <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[8, 8, 0, 0]} isAnimationActive={false} />
+              <Tooltip 
+                content={<SimpleTooltip unidade={unidade} formatDateBR={formatDateBR} />}
+                cursor={{ fill: "hsl(var(--accent))", opacity: 0.1 }}
+              />
+              <Bar 
+                dataKey="value" 
+                fill={PRIMARY_COLOR} 
+                radius={[8, 8, 0, 0]} 
+                isAnimationActive={false} 
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -161,7 +237,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PIZZA (Copiado exatamente do seu código - já estava sem Tooltip)
+  // ✅ 4. PERFIL PIZZA - SEM TOOLTIP
   if (perfil === "pizza") {
     return (
       <div className="h-80 w-full">
