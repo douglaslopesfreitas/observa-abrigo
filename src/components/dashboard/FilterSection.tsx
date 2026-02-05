@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+typescriptimport { useEffect, useMemo, useState } from "react";
 import { Search, X, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -250,14 +250,15 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
           </Select>
         </div>
 
-        {/* 5. BOTÃO LIMPAR - 1 coluna (menor) ✅ */}
-        <div className="lg:col-span-1 flex items-end">
+        {/* 5. BOTÃO LIMPAR - 1 coluna (alinhado ao final) ✅ */}
+        <div className="lg:col-span-1">
+          <label className="filter-label opacity-0">Ações</label>
           {hasFilters && (
             <Button
               variant="outline"
               size="sm"
               onClick={handleClearFilters}
-              className="w-full gap-1.5 hover:bg-[#359ad4] hover:text-white hover:border-[#359ad4]"
+              className="w-full h-10 gap-1.5 hover:bg-[#359ad4] hover:text-white hover:border-[#359ad4]"
             >
               <X className="h-4 w-4" />
               <span className="hidden xl:inline">Limpar filtros</span>
