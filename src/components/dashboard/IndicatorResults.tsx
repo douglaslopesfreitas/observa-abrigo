@@ -39,16 +39,15 @@ const CHART_COLORS = [
 type ParsedRow = {
   territorio: string;
   data: string;
-  categoria: string; // ✅ Mudou de "modalidade" para "categoria"
+  categoria: string;
   valor: number | null;
   fonte: string;
 };
 
 type ViewMode = "foto" | "evolucao" | "composicao";
 
-const TOTAL_LABEL = "Total"; // ✅ Nome genérico
+const TOTAL_LABEL = "Total";
 
-// Retorna null quando a célula está vazia, para não confundir com 0
 function parseNumber(v: unknown): number | null {
   const s = String(v ?? "").trim();
   if (!s) return null;
@@ -72,7 +71,6 @@ function sumVals(arr: Array<number | null>) {
   return arr.reduce((acc, v) => acc + (typeof v === "number" ? v : 0), 0);
 }
 
-// ✅ Fonte (clicável se tiver URL)
 function FonteLine({ fonte, url }: { fonte?: string; url?: string }) {
   if (!fonte) return null;
 
@@ -80,7 +78,7 @@ function FonteLine({ fonte, url }: { fonte?: string; url?: string }) {
     <div className="text-sm text-muted-foreground">
       Fonte:{" "}
       {url ? (
-        <a
+        
           href={url}
           target="_blank"
           rel="noreferrer"
@@ -95,7 +93,6 @@ function FonteLine({ fonte, url }: { fonte?: string; url?: string }) {
   );
 }
 
-// Tooltip customizado para esconder linhas com valor 0
 function CompositionTooltip({
   active,
   payload,
@@ -175,7 +172,6 @@ function CompositionTooltip({
         ))}
       </div>
 
-      {/* TOTAL */}
       <div
         style={{
           marginTop: 10,
@@ -209,9 +205,8 @@ export function IndicatorResults({
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<ParsedRow[]>([]);
-
-  // ✅ data de atualização (vem de _meta!B1)
   const [updatedAtBR, setUpdatedAtBR] = useState<string | null>(null);
+  const [showContent, setShowContent] = useState(false); // ✅ Para controlar animação
 
   const meta = useMemo(() => {
     if (!filters.indicador) return null;
@@ -231,7 +226,6 @@ export function IndicatorResults({
     );
   }, [filters.indicador, meta?.indicador_nome, meta?.titulo]);
 
-  // Quando trocar o indicador, volta pra Fotografia atual
   useEffect(() => {
     if (filters.indicador) setView("foto");
   }, [filters.indicador]);
@@ -242,6 +236,7 @@ export function IndicatorResults({
 
       setLoading(true);
       setErr(null);
+      setShowContent(false); // ✅ Esconde conteúdo durante carregamento
 
       try {
         const range =
@@ -249,7 +244,6 @@ export function IndicatorResults({
             ? meta.range
             : `${meta.sheet}!${meta.range || "A:Z"}`;
 
-        // ✅ pega indicador e meta em paralelo
         const [data, metaData] = await Promise.all([
           getIndicador(range),
           getIndicador("_meta!B1"),
@@ -257,7 +251,6 @@ export function IndicatorResults({
 
         const values: any[][] = data.values || [];
 
-        // metaData.values deve vir tipo [[ "03/02/2026" ]]
         const metaValues: any[][] = metaData.values || [];
         const b1 = metaValues?.[0]?.[0];
         const b1Str = String(b1 ?? "").trim();
@@ -265,43 +258,46 @@ export function IndicatorResults({
 
         if (values.length < 2) {
           setRows([]);
+          setShowContent(true); // ✅ Mostra mesmo sem dados
           return;
         }
 
         const headers = values[0].map(normalizeHeader);
         const body = values.slice(1);
 
-    const idxTerr = headers.indexOf("territorio");
-const idxData = headers.indexOf("data");
-const idxVal = headers.indexOf("valor");
-const idxFonte = headers.indexOf("fonte");
+        const idxTerr = headers.indexOf("territorio");
+        const idxData = headers.indexOf("data");
+        const idxVal = headers.indexOf("valor");
+        const idxFonte = headers.indexOf("fonte");
 
-// ✅ Detecta automaticamente a coluna de categoria
-// (ignora as colunas conhecidas)
-const knownCols = ["territorio", "data", "valor", "fonte"];
-const idxCategoria = headers.findIndex(
-  (h, i) => !knownCols.includes(h) && h.trim() !== ""
-);
+        const knownCols = ["territorio", "data", "valor", "fonte"];
+        const idxCategoria = headers.findIndex(
+          (h, i) => !knownCols.includes(h) && h.trim() !== ""
+        );
 
-       let lastDateTmp = "";
-const parsed: ParsedRow[] = body.map((r) => {
-  const rawDate = String(r[idxData] ?? "").trim();
-  if (rawDate) lastDateTmp = rawDate;
+        let lastDateTmp = "";
+        const parsed: ParsedRow[] = body.map((r) => {
+          const rawDate = String(r[idxData] ?? "").trim();
+          if (rawDate) lastDateTmp = rawDate;
 
-  return {
-    territorio: String(r[idxTerr] ?? "").trim(),
-    data: rawDate || lastDateTmp, // corrige datas mescladas
-    categoria: idxCategoria >= 0 ? String(r[idxCategoria] ?? "").trim() : "", // ✅ Usa a coluna detectada
-    valor: parseNumber(r[idxVal]),
-    fonte: String(r[idxFonte] ?? "").trim(),
-  };
-});
+          return {
+            territorio: String(r[idxTerr] ?? "").trim(),
+            data: rawDate || lastDateTmp,
+            categoria: idxCategoria >= 0 ? String(r[idxCategoria] ?? "").trim() : "",
+            valor: parseNumber(r[idxVal]),
+            fonte: String(r[idxFonte] ?? "").trim(),
+          };
+        });
 
         setRows(parsed);
+        
+        // ✅ Pequeno delay para iniciar animação
+        setTimeout(() => setShowContent(true), 100);
       } catch (e: any) {
         setRows([]);
         setUpdatedAtBR(null);
         setErr(String(e?.message || e));
+        setShowContent(true);
       } finally {
         setLoading(false);
       }
@@ -320,22 +316,20 @@ const parsed: ParsedRow[] = body.map((r) => {
 
   const dates = useMemo(() => {
     const ds = Array.from(new Set(filtered.map((r) => r.data).filter(Boolean)));
-    ds.sort(); // iso ordena certo
+    ds.sort();
     return ds;
   }, [filtered]);
 
   const lastDate = dates[dates.length - 1] || "";
 
-  // Modalidades (exceto a linha "Em todos os acolhimentos")
   const modalities = useMemo(() => {
-  const set = new Set<string>();
-  filtered.forEach((r) => {
-    if (r.categoria && r.categoria !== TOTAL_LABEL) set.add(r.categoria);
-  });
-  return Array.from(set);
-}, [filtered]);
+    const set = new Set<string>();
+    filtered.forEach((r) => {
+      if (r.categoria && r.categoria !== TOTAL_LABEL) set.add(r.categoria);
+    });
+    return Array.from(set);
+  }, [filtered]);
 
-  // ===== Fotografia atual =====
   const fotografiaAtual = useMemo(() => {
     if (!lastDate) return null;
 
@@ -380,7 +374,6 @@ const parsed: ParsedRow[] = body.map((r) => {
     };
   }, [filtered, lastDate]);
 
-  // ===== Evolução =====
   const lineData = useMemo(() => {
     if (!dates.length) return [];
     return dates.map((d) => {
@@ -401,7 +394,6 @@ const parsed: ParsedRow[] = body.map((r) => {
     });
   }, [dates, filtered]);
 
-  // ===== Composição =====
   const stacked = useMemo(() => {
     if (!dates.length) return { data: [] as any[], keys: [] as string[] };
 
@@ -452,8 +444,24 @@ const parsed: ParsedRow[] = body.map((r) => {
 
   return (
     <div className="space-y-4">
-      <div className="chart-container animate-fade-in">
-        {/* Header + botões */}
+      {/* ✅ BARRA ANIMADA NO TOPO */}
+      <div className="relative overflow-hidden h-1 bg-muted rounded-full">
+        <div
+          className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#359ad4] to-[#72C0F8] transition-all duration-1000 ease-out"
+          style={{
+            width: showContent ? "100%" : "0%",
+          }}
+        />
+      </div>
+
+      {/* ✅ CONTAINER COM ANIMAÇÃO DE ROTAÇÃO */}
+      <div
+        className="chart-container transition-all duration-700 ease-out"
+        style={{
+          opacity: showContent ? 1 : 0,
+          transform: showContent ? "perspective(1000px) rotateX(0deg)" : "perspective(1000px) rotateX(-15deg)",
+        }}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
             <h3 className="section-title">
@@ -486,34 +494,33 @@ const parsed: ParsedRow[] = body.map((r) => {
             )}
           </div>
         </div>
-{/* ====== Fotografia atual ====== */}
-{view === "foto" && (
-  <>
-    <div className="mt-4">
-      {/* ⚠️ REMOVA A DIV h-80 QUE FICAVA AQUI EM VOLTA DO CHARTRENDERER ⚠️ */}
-      <ChartRenderer
-        perfil={meta?.perfil || "padrao"}
-        data={fotografiaAtual?.fotoData || []}
-        unidade={meta?.unidade}
-        formatDateBR={formatDateBR}
-        showBanner={meta?.perfil === "padrao"}
-        totalValue={fotografiaAtual?.total}
-      />
-    </div>
 
-    {/* Fonte + Referência */}
-    <div className="mt-3 space-y-1">
-      <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-      {lastDate ? (
-        <div className="text-sm text-muted-foreground">
-          Referência: {formatDateBR(lastDate)}
-        </div>
-      ) : null}
-    </div>
-  </>
-)}
+        {/* Fotografia atual */}
+        {view === "foto" && (
+          <>
+            <div className="mt-4">
+              <ChartRenderer
+                perfil={meta?.perfil || "padrao"}
+                data={fotografiaAtual?.fotoData || []}
+                unidade={meta?.unidade}
+                formatDateBR={formatDateBR}
+                showBanner={meta?.perfil === "padrao"}
+                totalValue={fotografiaAtual?.total}
+              />
+            </div>
 
-{/* ====== Evolução ====== */}
+            <div className="mt-3 space-y-1">
+              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+              {lastDate ? (
+                <div className="text-sm text-muted-foreground">
+                  Referência: {formatDateBR(lastDate)}
+                </div>
+              ) : null}
+            </div>
+          </>
+        )}
+
+        {/* Evolução */}
         {view === "evolucao" && (
           <div className="mt-4">
             <div className="h-80 mt-6">
@@ -523,14 +530,12 @@ const parsed: ParsedRow[] = body.map((r) => {
                 </div>
               ) : (
                 <ChartRenderer
-                  // ✅ Se for perfil pizza, usa barras lado a lado. Se for padrão, usa linha.
                   perfil={meta?.perfil === "pizza" ? "barras_agrupadas" : "linha"}
                   data={
                     meta?.perfil === "pizza"
                       ? stacked.data.map((d) => ({ ...d, name: d.date }))
                       : lineData.map((d) => ({ name: d.date, value: d.value }))
                   }
-                  // ✅ Envia as categorias (keys) apenas quando for pizza para separar as barras
                   keys={meta?.perfil === "pizza" ? modalities : ["value"]}
                   unidade={meta?.unidade}
                   formatDateBR={formatDateBR}
@@ -543,7 +548,7 @@ const parsed: ParsedRow[] = body.map((r) => {
           </div>
         )}
 
-        {/* ====== Composição ====== */}
+        {/* Composição */}
         {view === "composicao" && (
           <div className="mt-4">
             <div className="h-96 mt-6">
