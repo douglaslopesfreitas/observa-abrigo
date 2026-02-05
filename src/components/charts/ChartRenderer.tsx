@@ -116,23 +116,21 @@ export function ChartRenderer({
   }
 
   // ✅ PERFIL PIZZA: Gráfico de Pizza com percentuais
- // ✅ PERFIL PIZZA: Gráfico de Pizza com percentuais
   if (perfil === "pizza") {
     return (
       <ResponsiveContainer width="100%" height="100%">
- <PieChart>
+        <PieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
-            labelLine={false}
+            labelLine={true} // ✅ Ativado: Adiciona a linha de conexão
             label={({ name, percent }) =>
               `${name}: ${(percent * 100).toFixed(1)}%`
             }
-            // ✅ Aqui está o segredo:
             innerRadius={80}  // Define o tamanho do "furo" central
             outerRadius={120} // Mantém o tamanho total do gráfico
-            paddingAngle={5}  // Opcional: Adiciona um pequeno espaço entre as fatias
+            paddingAngle={5}  // Adiciona um pequeno espaço entre as fatias
             fill="#8884d8"
             dataKey="value"
           >
@@ -143,16 +141,7 @@ export function ChartRenderer({
               />
             ))}
           </Pie>
-          <Tooltip
-            formatter={(value: number) => {
-              const total = data.reduce((acc, item) => acc + item.value, 0);
-              const percent = ((value / total) * 100).toFixed(1);
-              return [
-                `${value.toLocaleString("pt-BR")} (${percent}%)`,
-                "",
-              ];
-            }}
-          />
+          {/* ✅ Tooltip removido para não aparecer nada ao passar o mouse */}
         </PieChart>
       </ResponsiveContainer>
     );
