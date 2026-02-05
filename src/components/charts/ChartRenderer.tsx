@@ -116,6 +116,7 @@ export function ChartRenderer({
   }
 
   // ✅ PERFIL PIZZA: Gráfico de Pizza com percentuais
+ // ✅ PERFIL PIZZA: Gráfico de Pizza com percentuais
   if (perfil === "pizza") {
     return (
       <ResponsiveContainer width="100%" height="100%">
@@ -125,6 +126,7 @@ export function ChartRenderer({
             cx="50%"
             cy="50%"
             labelLine={false}
+            // O label já diz o nome e %, então a legenda é desnecessária
             label={({ name, percent }) =>
               `${name}: ${(percent * 100).toFixed(1)}%`
             }
@@ -149,7 +151,7 @@ export function ChartRenderer({
               ];
             }}
           />
-          <Legend />
+          {/* ✅ Legenda removida daqui para limpar o visual */}
         </PieChart>
       </ResponsiveContainer>
     );
