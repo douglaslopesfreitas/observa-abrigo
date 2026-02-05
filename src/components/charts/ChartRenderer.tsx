@@ -120,17 +120,19 @@ export function ChartRenderer({
   if (perfil === "pizza") {
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
+ <PieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
             labelLine={false}
-            // O label já diz o nome e %, então a legenda é desnecessária
             label={({ name, percent }) =>
               `${name}: ${(percent * 100).toFixed(1)}%`
             }
-            outerRadius={120}
+            // ✅ Aqui está o segredo:
+            innerRadius={80}  // Define o tamanho do "furo" central
+            outerRadius={120} // Mantém o tamanho total do gráfico
+            paddingAngle={5}  // Opcional: Adiciona um pequeno espaço entre as fatias
             fill="#8884d8"
             dataKey="value"
           >
@@ -151,7 +153,6 @@ export function ChartRenderer({
               ];
             }}
           />
-          {/* ✅ Legenda removida daqui para limpar o visual */}
         </PieChart>
       </ResponsiveContainer>
     );
