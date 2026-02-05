@@ -10,9 +10,8 @@ import {
   CartesianGrid,
   XAxis,
   YAxis,
-  Tooltip,
   Legend,
-  LabelList, // ✅ Importado para mostrar os valores nas colunas
+  LabelList,
 } from "recharts";
 import type { PerfilVisualizacao } from "@/types/dashboard";
 
@@ -60,17 +59,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ Função para o Rótulo (Bold e Porcentagem abaixo) - USADO NA PIZZA
-  const renderCustomLabel = ({ x, y, name, percent }: any) => {
-    return (
-      <text x={x} y={y} fill="currentColor" textAnchor="middle" dominantBaseline="central" className="fill-foreground">
-        <tspan x={x} dy="-0.5em" fontWeight="bold">{name}</tspan>
-        <tspan x={x} dy="1.2em">{(percent * 100).toFixed(1)}%</tspan>
-      </text>
-    );
-  };
-
-  // ✅ Gráfico de Linha (Evolução Padrão)
+  // ✅ 1. NOVO: Evolução Quantitativa (LINHA) - SEM TOOLTIP
   if (perfil === "linha") {
     return (
       <div className="h-80 w-full">
@@ -79,33 +68,33 @@ export function ChartRenderer({
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={formatDateBR} />
             <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip labelFormatter={formatDateBR} />
-            <Line type="monotone" dataKey="value" stroke={PRIMARY_COLOR} strokeWidth={2} dot={{ r: 4 }} />
+            {/* Tooltip removido */}
+            <Line type="monotone" dataKey="value" stroke={PRIMARY_COLOR} strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
     );
   }
 
-  // ✅ Gráfico de Barras Agrupadas (Evolução Pizza) - ALTERADO PARA ADICIONAR LEGENDA E PORCENTAGEM
+  // ✅ 2. NOVO: Evolução de Distribuição (BARRAS AGRUPADAS COM LEGENDA E %) - SEM TOOLTIP
   if (perfil === "barras_agrupadas") {
     return (
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <BarChart data={data} margin={{ top: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={formatDateBR} />
             <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip labelFormatter={formatDateBR} />
-            <Legend verticalAlign="bottom" height={36} /> {/* ✅ Legenda adicionada embaixo */}
+            {/* Tooltip removido */}
+            <Legend verticalAlign="bottom" height={36}/>
             {keys.map((key, index) => (
               <Bar 
                 key={key} 
                 dataKey={key} 
                 fill={CHART_COLORS[index % CHART_COLORS.length]} 
                 radius={[4, 4, 0, 0]} 
+                isAnimationActive={false}
               >
-                {/* ✅ LabelList adicionado para mostrar a porcentagem no topo da coluna */}
                 <LabelList
                   dataKey={key}
                   position="top"
@@ -129,7 +118,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PADRÃO (Mantido original)
+  // ✅ PERFIL PADRÃO (Copiado exatamente do seu código, mas REMOVIDO o Tooltip)
   if (perfil === "padrao") {
     return (
       <div className="flex flex-col w-full">
@@ -138,7 +127,11 @@ export function ChartRenderer({
             <div className="text-4xl font-semibold tracking-tight text-foreground">
               {totalValue.toLocaleString("pt-BR")}
             </div>
-            {unidade && <div className="text-sm text-muted-foreground mt-1">{unidade}</div>}
+            {unidade && (
+              <div className="text-sm text-muted-foreground mt-1">
+                {unidade}
+              </div>
+            )}
           </div>
         )}
 
@@ -155,12 +148,12 @@ export function ChartRenderer({
                 textAnchor="middle"
                 height={60}
               />
-              <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px" }}
-                formatter={(value: number) => [Number(value).toLocaleString("pt-BR"), unidade || "valor"]}
+              <YAxis
+                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                axisLine={{ stroke: "hsl(var(--border))" }}
               />
-              <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[8, 8, 0, 0]} />
+              {/* Tooltip removido conforme solicitado */}
+              <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[8, 8, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -168,31 +161,33 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ PERFIL PIZZA (Mantido original)
+  // ✅ PERFIL PIZZA (Copiado exatamente do seu código - já estava sem Tooltip)
   if (perfil === "pizza") {
     return (
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            {typeof totalValue === "number" && (
-              <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="fill-foreground font-bold" style={{ fontSize: "24px" }}>
-                {totalValue.toLocaleString("pt-BR")}
-              </text>
-            )}
             <Pie
               data={data}
               cx="50%"
               cy="50%"
               labelLine={true}
-              label={renderCustomLabel}
+              label={({ name, percent }) =>
+                `${name}: ${(percent * 100).toFixed(1)}%`
+              }
               innerRadius={80}
               outerRadius={120}
               paddingAngle={5}
               fill="#8884d8"
               dataKey="value"
+              isAnimationActive={false}
             >
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="none" />
+                <Cell
+                  key={`cell-${index}`}
+                  fill={CHART_COLORS[index % CHART_COLORS.length]}
+                  stroke="none"
+                />
               ))}
             </Pie>
           </PieChart>
