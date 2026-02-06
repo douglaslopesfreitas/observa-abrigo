@@ -117,7 +117,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 1. Evolução Quantitativa (LINHA) - COM TOOLTIP
+  // ✅ 1. Evolução Quantitativa (LINHA) - COM ANIMAÇÃO
   if (perfil === "linha") {
     return (
       <div className="h-80 w-full">
@@ -136,7 +136,8 @@ export function ChartRenderer({
               stroke={PRIMARY_COLOR} 
               strokeWidth={2} 
               dot={{ r: 4 }} 
-              isAnimationActive={false} 
+              isAnimationActive={true} 
+              animationDuration={1500}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -144,7 +145,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 2. Evolução de Distribuição (BARRAS AGRUPADAS COM LEGENDA E %) - SEM TOOLTIP
+  // ✅ 2. Evolução de Distribuição (BARRAS AGRUPADAS) - COM ANIMAÇÃO
   if (perfil === "barras_agrupadas") {
     return (
       <div className="h-80 w-full">
@@ -153,7 +154,6 @@ export function ChartRenderer({
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={formatDateBR} />
             <YAxis tick={{ fontSize: 12 }} />
-            {/* SEM Tooltip */}
             <Legend verticalAlign="bottom" height={36}/>
             {keys.map((key, index) => (
               <Bar 
@@ -161,7 +161,9 @@ export function ChartRenderer({
                 dataKey={key} 
                 fill={CHART_COLORS[index % CHART_COLORS.length]} 
                 radius={[4, 4, 0, 0]} 
-                isAnimationActive={false}
+                isAnimationActive={true}
+                animationDuration={1500}
+                animationBegin={index * 100}
               >
                 <LabelList
                   dataKey={key}
@@ -186,7 +188,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 3. PERFIL PADRÃO (Barras quantitativas) - COM TOOLTIP
+  // ✅ 3. PERFIL PADRÃO (Barras quantitativas) - COM ANIMAÇÃO
   if (perfil === "padrao") {
     return (
       <div className="flex flex-col w-full">
@@ -228,7 +230,8 @@ export function ChartRenderer({
                 dataKey="value" 
                 fill={PRIMARY_COLOR} 
                 radius={[8, 8, 0, 0]} 
-                isAnimationActive={false} 
+                isAnimationActive={true} 
+                animationDuration={1500}
               />
             </BarChart>
           </ResponsiveContainer>
@@ -237,7 +240,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 4. PERFIL PIZZA - SEM TOOLTIP
+  // ✅ 4. PERFIL PIZZA/DONUT - COM ANIMAÇÃO
   if (perfil === "pizza") {
     return (
       <div className="h-80 w-full">
@@ -256,7 +259,9 @@ export function ChartRenderer({
               paddingAngle={5}
               fill="#8884d8"
               dataKey="value"
-              isAnimationActive={false}
+              isAnimationActive={true}
+              animationDuration={1500}
+              animationBegin={0}
             >
               {data.map((entry, index) => (
                 <Cell
