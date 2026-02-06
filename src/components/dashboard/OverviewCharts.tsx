@@ -4,6 +4,9 @@ import {
   Bar,
   LineChart,
   Line,
+  PieChart, // ✅ Adicionado
+  Pie,      // ✅ Adicionado
+  Legend,   // ✅ Adicionado
   XAxis,
   YAxis,
   CartesianGrid,
@@ -271,9 +274,9 @@ export function OverviewCharts() {
       .catch(() => setAgeData([]));
   }, []);
 
-  // ===== Recorte racial (aba raca) =====
+  // ===== Recorte racial (aba raça) - ✅ CORRIGIDO NOME DA ABA E FORMATO DONUT =====
   useEffect(() => {
-    getIndicadorSheet("raca")
+    getIndicadorSheet("raça") // ✅ mudado de "raca" para "raça"
       .then((d) => {
         const values: any[][] = d.values || [];
         if (values.length < 2) {
@@ -504,7 +507,7 @@ export function OverviewCharts() {
         </div>
       )}
 
-      {/* Recorte Racial */}
+      {/* Recorte Racial (DONUT) ✅ */}
       {racaData.length === 0 ? (
         <EmptyState title="Recorte Racial" />
       ) : (
@@ -512,17 +515,21 @@ export function OverviewCharts() {
           <h3 className="section-title">Recorte Racial</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={racaData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                />
-                <YAxis
-                  tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                />
+              <PieChart>
+                <Pie
+                  data={racaData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60} // ✅ Cria o furo do donut
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  nameKey="name"
+                >
+                  {racaData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                  ))}
+                </Pie>
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
@@ -531,18 +538,19 @@ export function OverviewCharts() {
                   }}
                   formatter={(value: number) => [value.toLocaleString("pt-BR"), "Acolhidos"]}
                 />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {racaData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
+                <Legend 
+                  layout="vertical" 
+                  verticalAlign="middle" 
+                  align="right"
+                  wrapperStyle={{ fontSize: '11px' }}
+                />
+              </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
       )}
 
-      {/* Maiores Necessidades (BARRA + %). Não mostra "129" em lugar nenhum */}
+      {/* Maiores Necessidades */}
       {needsData.length === 0 ? (
         <EmptyState title="Maiores Necessidades" />
       ) : (
@@ -564,8 +572,8 @@ export function OverviewCharts() {
                   dataKey="name"
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   axisLine={{ stroke: "hsl(var(--border))" }}
-                  width={200}     // ✅ aumenta pra caber o nome inteiro
-                  interval={0}     // ✅ tenta forçar mostrar todos
+                  width={200}
+                  interval={0}
                 />
                 <Tooltip
                   contentStyle={{
