@@ -14,19 +14,20 @@ import { getIndicador } from "@/services/sheetsApi";
 
 const PRIMARY_COLOR = "#359AD4";
 
+// ✅ Mesmas cores originais, apenas reorganizadas para melhor contraste
 const CHART_COLORS = [
-  "#2674a0",
-  "#E67310",
-  "#FFCE19",
-  "#FFB114",
-  "#0A2E43",
-  "#72C0F8",
-  "#175070",
-  "#C9E3FC",
-  "#f7efba",
-  "#9F5125",
-  "#FA841E",
-  "#02121E",
+  "#2674a0", // Azul
+  "#FA841E", // Laranja
+  "#72C0F8", // Azul Claro
+  "#FFCE19", // Amarelo
+  "#0A2E43", // Navy
+  "#E67310", // Laranja Escuro
+  "#C9E3FC", // Azul Pálido
+  "#FFB114", // Amarelo Ouro
+  "#175070", // Azul Profundo
+  "#9F5125", // Marrom
+  "#f7efba", // Creme
+  "#02121E", // Dark
 ];
 
 type ParsedRow = {
@@ -603,6 +604,7 @@ export function IndicatorResults({
                         dataKey={k}
                         stackId="a"
                         fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        radius={[4, 4, 0, 0]} // ✅ Barras arredondadas no topo
                         isAnimationActive={true}
                         animationDuration={1500}
                         animationBegin={100}
