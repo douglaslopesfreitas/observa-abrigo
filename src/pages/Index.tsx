@@ -753,7 +753,7 @@ export default function Index() {
       <DashboardHeader />
 
       <main className="flex-1 container max-w-7xl mx-auto py-6 space-y-6">
-        {/* 1. Cabeçalho e KPIs (Topo) */}
+        {/* 1. Cabeçalho e KPIs */}
         <section>
           <h2 className="section-title px-1">
             Visão Geral do Acolhimento | Estado do Rio de Janeiro
@@ -761,7 +761,7 @@ export default function Index() {
           <KPICards data={kpiData as any} />
         </section>
 
-        {/* 2. Explorar Indicadores (Sempre visível abaixo dos KPIs) */}
+        {/* 2. Explorar Indicadores */}
         <section className="pt-2">
           {catalogoLoading && (
             <div className="text-sm text-muted-foreground mb-2">Carregando catálogo...</div>
@@ -773,11 +773,12 @@ export default function Index() {
           />
         </section>
 
-        {/* 3. Lógica Condicional com Animação Reforçada */}
+        {/* 3. Área de Gráficos com Animação Reforçada */}
         {hasActiveFilters ? (
           <section 
-            key={filters.indicador || "results"} // ✅ Key força animação ao trocar indicador
-            className="animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-700 ease-out"
+            // ✅ A key baseada em TODOS os filtros garante que o gráfico re-anime ao trocar qualquer opção
+            key={`${filters.indicador}-${filters.territorio}-${filters.area}`} 
+            className="animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-1000 ease-out"
           >
             <IndicatorResults filters={filters} catalogo={catalogo} />
           </section>
