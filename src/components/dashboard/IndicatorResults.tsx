@@ -1,22 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
   CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
 } from "recharts";
 import { ChartRenderer } from "@/components/charts/ChartRenderer";
-import type { CatalogRow } from "@/types/dashboard";
-import type { FilterState } from "@/types/dashboard";
+import type { CatalogRow, FilterState } from "@/types/dashboard";
 import { getIndicador } from "@/services/sheetsApi";
 
 const PRIMARY_COLOR = "#359AD4";
@@ -39,14 +32,14 @@ const CHART_COLORS = [
 type ParsedRow = {
   territorio: string;
   data: string;
-  categoria: string; // ✅ Mudou de "modalidade" para "categoria"
+  categoria: string;
   valor: number | null;
   fonte: string;
 };
 
 type ViewMode = "foto" | "evolucao" | "composicao";
 
-const TOTAL_LABEL = "Total"; // ✅ Nome genérico
+const TOTAL_LABEL = "Total";
 
 // Retorna null quando a célula está vazia, para não confundir com 0
 function parseNumber(v: unknown): number | null {
@@ -56,8 +49,17 @@ function parseNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function normalizeHeader(h: unknown) {
-  return String(h ?? "").trim().toLowerCase();
+// Normaliza cabeçalhos para comparação robusta (acentos, espaços, etc.)
+function normalizeHeader(h: any): string {
+  return String(h ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .replace(/\s+/g, "_") // espaços viram _
+    .replace(/[^\w]/g, "_") // resto vira _
+    .replace(/_+/g, "_") // colapsa __
+    .replace(/^_+|_+$/g, ""); // remove _ no começo/fim
 }
 
 function formatDateBR(iso: string) {
@@ -175,7 +177,6 @@ function CompositionTooltip({
         ))}
       </div>
 
-      {/* TOTAL */}
       <div
         style={{
           marginTop: 10,
@@ -210,41 +211,13 @@ export function IndicatorResults({
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<ParsedRow[]>([]);
 
-  // ✅ data de atualização (vem de _meta!B1)
+  // ✅ data de atualização (vem de _meta!B1) - mantido para futuro uso
   const [updatedAtBR, setUpdatedAtBR] = useState<string | null>(null);
 
   const meta = useMemo(() => {
     if (!filters.indicador) return null;
     return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
   }, [filters.indicador, catalogo]);
-
- function normalizeHeader(h: any): string {
-  return String(h ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove acentos
-    .replace(/\s+/g, "_") // espaços viram _
-    .replace(/[^\w]/g, "_") // qualquer resto vira _
-    .replace(/_+/g, "_") // colapsa __
-    .replace(/^_+|_+$/g, ""); // remove _ no começo/fim
-}
-
-function rowsToCatalog(values: any[][]): CatalogRow[] {
-  if (!Array.isArray(values) || values.length < 2) return [];
-
-  const headers = values[0].map(normalizeHeader);
-  const body = values.slice(1);
-
-  return body.map((r) => {
-    const obj: any = {};
-    headers.forEach((headerName, index) => {
-      if (headerName) obj[headerName] = String(r[index] ?? "").trim();
-    });
-    return obj as CatalogRow;
-  });
-}
-
 
   const isFaixaEtaria = useMemo(() => {
     const id = String(filters.indicador || "").toLowerCase();
@@ -253,9 +226,7 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
 
     return (
       joined.includes("faixa") &&
-      (joined.includes("etaria") ||
-        joined.includes("etária") ||
-        joined.includes("et"))
+      (joined.includes("etaria") || joined.includes("etária") || joined.includes("et"))
     );
   }, [filters.indicador, meta?.indicador_nome, meta?.titulo]);
 
@@ -288,12 +259,43 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
 
         const idxTerr = headers.indexOf("territorio");
         const idxData = headers.indexOf("data");
-        const idxCat = headers.indexOf("categoria");
         const idxVal = headers.indexOf("valor");
         const idxFonte = headers.indexOf("fonte");
 
-        if (idxTerr < 0 || idxData < 0 || idxCat < 0 || idxVal < 0) {
-          setErr("Colunas obrigatórias ausentes (territorio, data, categoria, valor)");
+        // ✅ categoria: tenta "categoria"; se não existir, tenta variações; se ainda não, pega a 1ª coluna "desconhecida"
+        let idxCat = headers.indexOf("categoria");
+        if (idxCat < 0) {
+          const candidatos = [
+            "modalidade",
+            "faixa",
+            "raca",
+            "raca_",
+            "alfabetizacao",
+            "atendimento_psicologico",
+            "atendimento_psicológico",
+            "atendimento_psicologico_",
+          ].map(normalizeHeader);
+
+          for (const c of candidatos) {
+            const i = headers.indexOf(c);
+            if (i >= 0) {
+              idxCat = i;
+              break;
+            }
+          }
+        }
+
+        if (idxCat < 0) {
+          idxCat = headers.findIndex((h, i) => {
+            if (!h) return false;
+            if (i === idxTerr || i === idxData || i === idxVal || i === idxFonte) return false;
+            return true;
+          });
+        }
+
+        // ✅ obrigatórias mínimas: territorio, data, valor
+        if (idxTerr < 0 || idxData < 0 || idxVal < 0) {
+          setErr("Colunas obrigatórias ausentes (territorio, data, valor)");
           setRows([]);
           return;
         }
@@ -303,10 +305,13 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
           const dataStr = String(r[idxData] ?? "").trim();
           if (dataStr) lastDate = dataStr;
 
+          const categoria =
+            idxCat >= 0 ? String(r[idxCat] ?? "").trim() : "Geral";
+
           return {
             territorio: String(r[idxTerr] ?? "").trim(),
             data: dataStr || lastDate,
-            categoria: String(r[idxCat] ?? "").trim(),
+            categoria: categoria || "Geral",
             valor: parseNumber(r[idxVal]),
             fonte: idxFonte >= 0 ? String(r[idxFonte] ?? "").trim() : "",
           };
@@ -331,20 +336,19 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
 
   const dates = useMemo(() => {
     const ds = Array.from(new Set(filtered.map((r) => r.data).filter(Boolean)));
-    ds.sort(); // iso ordena certo
+    ds.sort();
     return ds;
   }, [filtered]);
 
   const lastDate = dates[dates.length - 1] || "";
 
-  // Modalidades (exceto a linha "Em todos os acolhimentos")
   const modalities = useMemo(() => {
-  const set = new Set<string>();
-  filtered.forEach((r) => {
-    if (r.categoria && r.categoria !== TOTAL_LABEL) set.add(r.categoria);
-  });
-  return Array.from(set);
-}, [filtered]);
+    const set = new Set<string>();
+    filtered.forEach((r) => {
+      if (r.categoria && r.categoria !== TOTAL_LABEL) set.add(r.categoria);
+    });
+    return Array.from(set);
+  }, [filtered]);
 
   // ===== Fotografia atual =====
   const fotografiaAtual = useMemo(() => {
@@ -371,8 +375,7 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
     const byMod = new Map<string, number>();
     filtered
       .filter(
-        (r) =>
-          r.data === lastDate && r.categoria && r.categoria !== TOTAL_LABEL
+        (r) => r.data === lastDate && r.categoria && r.categoria !== TOTAL_LABEL
       )
       .forEach((r) => {
         const v = typeof r.valor === "number" ? r.valor : 0;
@@ -437,7 +440,10 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
       if (!d) return;
       if (!byDate.has(d)) byDate.set(d, { date: d });
       const obj = byDate.get(d);
-      keys.forEach((k) => { if (obj[k] == null) obj[k] = 0; });
+
+      keys.forEach((k) => {
+        if (obj[k] == null) obj[k] = 0;
+      });
 
       const rowsOnDate = filtered.filter((r) => r.data === d);
       const hasBreakdown = rowsOnDate.some(
@@ -452,7 +458,8 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
         obj[r.categoria] = (obj[r.categoria] || 0) + v;
       });
 
-      const topKey = [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
+      const topKey =
+        [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
       obj.__top = topKey;
     });
 
@@ -464,73 +471,83 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
   return (
     <div className="space-y-4">
       <div className="chart-container animate-fade-in">
-        {/* Header + botões */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
             <h3 className="section-title">
               {meta?.titulo || meta?.indicador_nome || "Indicador"}
             </h3>
-            {loading && <div className="text-sm text-muted-foreground mt-1">Carregando dados...</div>}
+            {loading && (
+              <div className="text-sm text-muted-foreground mt-1">
+                Carregando dados...
+              </div>
+            )}
             {err && <div className="text-sm text-destructive mt-1">Erro: {err}</div>}
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setView("foto")}
-              className={`h-9 px-3 rounded-md border text-sm transition ${view === "foto" ? "bg-[#359ad4] text-white" : "bg-background"}`}
+              className={`h-9 px-3 rounded-md border text-sm transition ${
+                view === "foto" ? "bg-[#359ad4] text-white" : "bg-background"
+              }`}
             >
               Fotografia atual
             </button>
             <button
               onClick={() => setView("evolucao")}
-              className={`h-9 px-3 rounded-md border text-sm transition ${view === "evolucao" ? "bg-[#359ad4] text-white" : "bg-background"}`}
+              className={`h-9 px-3 rounded-md border text-sm transition ${
+                view === "evolucao" ? "bg-[#359ad4] text-white" : "bg-background"
+              }`}
             >
               Evolução
             </button>
+
             {meta?.perfil !== "pizza" && (
               <button
                 onClick={() => setView("composicao")}
-                className={`h-9 px-3 rounded-md border text-sm transition ${view === "composicao" ? "bg-[#359ad4] text-white" : "bg-background"}`}
+                className={`h-9 px-3 rounded-md border text-sm transition ${
+                  view === "composicao" ? "bg-[#359ad4] text-white" : "bg-background"
+                }`}
               >
                 {meta?.indicador_id === "abrigos" ? "Por tipo de entidade" : "Por modalidade"}
               </button>
             )}
           </div>
         </div>
-{/* ====== Fotografia atual ====== */}
-{view === "foto" && (
-  <>
-    <div className="mt-4">
-      {/* ⚠️ REMOVA A DIV h-80 QUE FICAVA AQUI EM VOLTA DO CHARTRENDERER ⚠️ */}
-      <ChartRenderer
-        perfil={meta?.perfil || "padrao"}
-        data={fotografiaAtual?.fotoData || []}
-        unidade={meta?.unidade}
-        formatDateBR={formatDateBR}
-        showBanner={meta?.perfil === "padrao"}
-        totalValue={fotografiaAtual?.total}
-      />
-    </div>
 
-    {/* Fonte + Referência */}
-    <div className="mt-3 space-y-1">
-      {meta?.nota_explicativa ? (
-  <div className="text-sm text-muted-foreground whitespace-pre-line">
-    {meta.nota_explicativa}
-  </div>
-) : null}
+        {/* ====== Fotografia atual ====== */}
+        {view === "foto" && (
+          <>
+            <div className="mt-4">
+              <ChartRenderer
+                perfil={meta?.perfil || "padrao"}
+                data={fotografiaAtual?.fotoData || []}
+                unidade={meta?.unidade}
+                formatDateBR={formatDateBR}
+                showBanner={meta?.perfil === "padrao"}
+                totalValue={fotografiaAtual?.total}
+              />
+            </div>
 
-      <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-      {lastDate ? (
-        <div className="text-sm text-muted-foreground">
-          Referência: {formatDateBR(lastDate)}
-        </div>
-      ) : null}
-    </div>
-  </>
-)}
+            <div className="mt-3 space-y-1">
+              {meta?.nota_explicativa ? (
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {meta.nota_explicativa}
+                </div>
+              ) : null}
 
-{/* ====== Evolução ====== */}
+              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+
+              {lastDate ? (
+                <div className="text-sm text-muted-foreground">
+                  Referência: {formatDateBR(lastDate)}
+                </div>
+              ) : null}
+            </div>
+          </>
+        )}
+
+        {/* ====== Evolução ====== */}
         {view === "evolucao" && (
           <div className="mt-4">
             <div className="h-80 mt-6">
@@ -540,14 +557,12 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
                 </div>
               ) : (
                 <ChartRenderer
-                  // ✅ Se for perfil pizza, usa barras lado a lado. Se for padrão, usa linha.
                   perfil={meta?.perfil === "pizza" ? "barras_agrupadas" : "linha"}
                   data={
                     meta?.perfil === "pizza"
                       ? stacked.data.map((d) => ({ ...d, name: d.date }))
                       : lineData.map((d) => ({ name: d.date, value: d.value }))
                   }
-                  // ✅ Envia as categorias (keys) apenas quando for pizza para separar as barras
                   keys={meta?.perfil === "pizza" ? modalities : ["value"]}
                   unidade={meta?.unidade}
                   formatDateBR={formatDateBR}
@@ -565,16 +580,31 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
           <div className="mt-4">
             <div className="h-96 mt-6">
               {stacked.data.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sem dados detalhados</div>
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Sem dados detalhados
+                </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stacked.data}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={formatDateBR} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={formatDateBR}
+                    />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
                     {stacked.keys.map((k, i) => (
-                      <Bar key={k} dataKey={k} stackId="a" fill={CHART_COLORS[i % CHART_COLORS.length]} isAnimationActive={false} />
+                      <Bar
+                        key={k}
+                        dataKey={k}
+                        stackId="a"
+                        fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        isAnimationActive={false}
+                      />
                     ))}
                   </BarChart>
                 </ResponsiveContainer>
