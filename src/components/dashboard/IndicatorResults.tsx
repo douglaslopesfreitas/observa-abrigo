@@ -603,7 +603,7 @@ export function IndicatorResults({
                         dataKey={k}
                         stackId="a"
                         fill={CHART_COLORS[i % CHART_COLORS.length]}
-                        isAnimationActive={false}
+                        isAnimationActive={true}
                       />
                     ))}
                   </BarChart>
