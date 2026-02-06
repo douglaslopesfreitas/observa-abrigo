@@ -60,23 +60,6 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
   });
 }
 
-  
-  // Transforma os cabeçalhos em minúsculo e remove espaços
-  const headers = values[0].map((h) => String(h ?? "").trim().toLowerCase());
-  const body = values.slice(1);
-
-  return body.map((r) => {
-    const obj: any = {};
-    headers.forEach((headerName, index) => {
-      // Cria a propriedade no objeto com o valor da coluna correspondente de forma automática
-      if (headerName) {
-        obj[headerName] = String(r[index] ?? "").trim();
-      }
-    });
-    return obj as CatalogRow;
-  });
-}
-
 type AcolhidosRow = {
   territorio: string;
   data: string;
