@@ -446,10 +446,10 @@ export default function Index() {
 
         const rowsLast = rj.filter((x) => x.data === last);
 
-        const naoRow = rowsLast.find((r) => {
-          const c = normTxt(r.categoria);
-          return c.includes("nao") && c.includes("alfabet");
-        });
+       const naoRow = rowsLast.find((r) => {
+  const c = normTxt(r.categoria);
+  return c === "nao alfabetizado" || (c.includes("nao") && c.includes("alfabet"));
+});
 
         const nao = naoRow && typeof naoRow.valor === "number" ? naoRow.valor : null;
 
