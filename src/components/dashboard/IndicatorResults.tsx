@@ -14,17 +14,17 @@ import { getIndicador } from "@/services/sheetsApi";
 
 const PRIMARY_COLOR = "#359AD4";
 
-// ✅ Mesmas cores originais, apenas reorganizadas para melhor contraste
+// ✅ Suas cores originais reorganizadas para dar contraste entre camadas vizinhas
 const CHART_COLORS = [
   "#2674a0", // Azul
-  "#FA841E", // Laranja
+  "#E67310", // Laranja Escuro
   "#72C0F8", // Azul Claro
   "#FFCE19", // Amarelo
-  "#0A2E43", // Navy
-  "#E67310", // Laranja Escuro
+  "#175070", // Azul Profundo
+  "#FA841E", // Laranja Vivo
   "#C9E3FC", // Azul Pálido
   "#FFB114", // Amarelo Ouro
-  "#175070", // Azul Profundo
+  "#0A2E43", // Navy
   "#9F5125", // Marrom
   "#f7efba", // Creme
   "#02121E", // Dark
@@ -41,6 +41,31 @@ type ParsedRow = {
 type ViewMode = "foto" | "evolucao" | "composicao";
 
 const TOTAL_LABEL = "Total";
+
+// ✅ Componente para arredondar apenas o topo da barra empilhada
+const RoundedTopBar = (props: any) => {
+  const { x, y, width, height, fill, payload, dataKey } = props;
+  if (!height || height <= 0) return null;
+
+  // Verifica se esta categoria é a que está no topo desta barra específica no tempo
+  const isTop = payload.__top === dataKey;
+  const radius = 6;
+
+  if (isTop) {
+    return (
+      <path
+        d={`M${x},${y + radius} 
+           Q${x},${y} ${x + radius},${y} 
+           L${x + width - radius},${y} 
+           Q${x + width},${y} ${x + width},${y + radius} 
+           L${x + width},${y + height} 
+           L${x},${y + height} Z`}
+        fill={fill}
+      />
+    );
+  }
+  return <rect x={x} y={y} width={width} height={height} fill={fill} />;
+};
 
 // Retorna null quando a célula está vazia, para não confundir com 0
 function parseNumber(v: unknown): number | null {
@@ -459,6 +484,7 @@ export function IndicatorResults({
         obj[r.categoria] = (obj[r.categoria] || 0) + v;
       });
 
+      // ✅ LOGICA DO TOPO: Descobre qual é a última categoria com valor > 0 nesta data
       const topKey =
         [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
       obj.__top = topKey;
@@ -586,7 +612,7 @@ export function IndicatorResults({
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart key={`comp-${filters.indicador}`} data={stacked.data}>
+                  <BarChart key={`comp-${filters.indicador}-${filters.territorio}`} data={stacked.data}>
                     <CartesianGrid
                       strokeDasharray="3 3"
                       stroke="hsl(var(--border))"
@@ -604,7 +630,7 @@ export function IndicatorResults({
                         dataKey={k}
                         stackId="a"
                         fill={CHART_COLORS[i % CHART_COLORS.length]}
-                        radius={[4, 4, 0, 0]} // ✅ Barras arredondadas no topo
+                        shape={<RoundedTopBar />} // ✅ Aplica o topo arredondado dinâmico
                         isAnimationActive={true}
                         animationDuration={1500}
                         animationBegin={100}
