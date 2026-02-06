@@ -525,7 +525,7 @@ export default function Index() {
           ...kpi,
          value: typeof pct === "number" ? pct : 0,
           details: [
-  "Entre os acolhidos com idade para já estarem alfabetizados (8 anos pra cima).",
+  "Entre crianças e adolescentes acolhidos que já deveriam estar alfabetizados (8+)",
 ],
         };
       }
