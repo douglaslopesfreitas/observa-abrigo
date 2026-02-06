@@ -519,7 +519,7 @@ export default function Index() {
       });
   }, []);
 
-  // ✅ 5) KPI Vítimas de violência: % "Sim" / total (aba violencia)
+  // 5) KPI Vítimas de violência: % "Sim" / total (aba violencia)
   useEffect(() => {
     getIndicadorSheet("violencia")
       .then((d) => {
@@ -570,7 +570,7 @@ export default function Index() {
       .catch(() => setKpiVitimasViolenciaPct(null));
   }, []);
 
-  // ✅ 6) KPI Sem acompanhamento psicológico individualizado: % "Não" / total
+  // 6) KPI Sem acompanhamento psicológico individualizado: % "Não" / total
   // tenta primeiro uma aba dedicada; se não existir, tenta saude
   useEffect(() => {
     const trySheets = async () => {
@@ -643,7 +643,6 @@ export default function Index() {
       value: null,
       unit: "",
     },
-    // ✅ NOVOS CARDS
     {
       id: "vitimas_violencia",
       label: "Vítimas de violência",
@@ -655,12 +654,6 @@ export default function Index() {
       label: "Sem acompanhamento psicológico individualizado",
       value: null,
       unit: "",
-    },
-    {
-      id: "tempo_medio",
-      label: "Tempo médio de acolhimento",
-      value: null,
-      unit: "anos",
     },
   ];
 
@@ -691,7 +684,9 @@ export default function Index() {
         return {
           ...kpi,
           value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
-          details: ["Entre crianças e adolescentes acolhidos que já deveriam estar alfabetizados (8+)"],
+          details: [
+            "Entre crianças e adolescentes acolhidos que já deveriam estar alfabetizados (8+)",
+          ],
         };
       }
 
