@@ -1,101 +1,59 @@
-// src/services/sheetsApi.ts
-
+/**
+ * Funções para buscar dados da API serverless (/api/sheets)
+ */
 type SheetsResponse = {
-  values?: any[][];
+  values: any[][];
+  updatedAt?: string | null;
 };
 
-const API_URL = "/api/sheets";
-
-// normaliza pra comparar (remove acento, lower, etc)
-function norm(s: unknown) {
-  return String(s ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+async function fetchSheets(range?: string): Promise<SheetsResponse> {
+  const qs = range ? `?${new URLSearchParams({ range }).toString()}` : "";
+  const response = await fetch(`/api/sheets${qs}`);
+  if (!response.ok) {
+    throw new Error("Erro ao buscar dados da planilha");
+  }
+  return await response.json();
 }
 
-// coloca aspas no nome da aba (A1 notation) e escapa aspas simples
-function quoteSheetName(sheetName: string) {
-  const escaped = sheetName.replace(/'/g, "''");
-  return `'${escaped}'`;
-}
-
-// ✅ Aliases do FRONT -> nome REAL da aba no Sheets
-// (conforme você descreveu agora)
-const SHEET_ALIAS_MAP: Record<string, string> = {
-  // alfabetização vem de "educacao"
-  alfabetizacao: "educacao",
-  alfabetização: "educacao",
-  educacao: "educacao",
-
-  // recorte racial vem de "raça"
-  raca: "raça",
-  raça: "raça",
-
-  // tratamento psicológico vem de "saude"
-  psicologico: "saude",
-  psicologia: "saude",
-  saude: "saude",
-  saúde: "saude",
-
-  // violência vem de "violencia"
-  violencia: "violencia",
-  violências: "violencia",
+export const getIndicador = async (range: string): Promise<SheetsResponse> => {
+  try {
+    return await fetchSheets(range);
+  } catch (error) {
+    console.error("Erro no getIndicador:", error);
+    throw error;
+  }
 };
 
-function resolveSheetName(input: string) {
-  const key = norm(input);
-  return SHEET_ALIAS_MAP[key] ?? input;
-}
-
-// Monta range no formato A1: 'Nome da Aba'!A:Z
-function buildRange(sheetOrRange: string) {
-  const s = String(sheetOrRange || "").trim();
-
-  // se já veio completo (tem !), só garante aspas no nome da aba
-  if (s.includes("!")) {
-    const [sheetPart, rest] = s.split("!");
-    const realSheet = resolveSheetName(sheetPart.trim());
-
-    const alreadyQuoted =
-      realSheet.startsWith("'") && realSheet.endsWith("'");
-
-    const safeSheet = alreadyQuoted ? realSheet : quoteSheetName(realSheet);
-    return `${safeSheet}!${rest}`;
+export const getCatalogo = async (
+  range = "catalogo!A:Z"
+): Promise<SheetsResponse> => {
+  try {
+    return await fetchSheets(range);
+  } catch (error) {
+    console.error("Erro no getCatalogo:", error);
+    throw error;
   }
+};
 
-  // se veio só a aba (ex: "alfabetizacao"), resolve + põe aspas
-  const realSheet = resolveSheetName(s);
-  return `${quoteSheetName(realSheet)}!A:Z`;
-}
-
-async function fetchSheets(rangeOrSheet: string): Promise<SheetsResponse> {
-  const range = buildRange(rangeOrSheet);
-  const url = `${API_URL}?range=${encodeURIComponent(range)}`;
-
-  const r = await fetch(url);
-  if (!r.ok) {
-    let extra = "";
-    try {
-      extra = await r.text();
-    } catch {}
-    throw new Error(`Erro ao buscar dados da planilha (${r.status}): ${extra}`);
+export const getIndicadorSheet = async (
+  sheetName: string
+): Promise<SheetsResponse> => {
+  try {
+    const sheet = String(sheetName || "").trim();
+    if (!sheet) throw new Error("sheetName vazio em getIndicadorSheet");
+    return await fetchSheets(`${sheet}!A:Z`);
+  } catch (error) {
+    console.error("Erro no getIndicadorSheet:", error);
+    throw error;
   }
-  return r.json();
-}
+};
 
-// Mantém assinaturas que você já usa
-export async function getCatalogo(rangeOrSheet: string) {
-  return fetchSheets(rangeOrSheet);
-}
-
-export async function getIndicadorSheet(sheetName: string) {
-  // você chama getIndicadorSheet("alfabetizacao"), "raca", "saude", "violencia" etc.
-  return fetchSheets(sheetName);
-}
-
-// Se você usa getIndicador("aba!A:Z") em algum lugar, mantém também:
-export async function getIndicador(rangeOrSheet: string) {
-  return fetchSheets(rangeOrSheet);
-}
+export const getUpdatedAt = async (): Promise<string | null> => {
+  try {
+    const data = await fetchSheets();
+    return data.updatedAt ?? null;
+  } catch (error) {
+    console.error("Erro no getUpdatedAt:", error);
+    return null;
+  }
+};

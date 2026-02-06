@@ -29,6 +29,8 @@ type CatalogRow = {
 function parseNumberOrNull(v: unknown): number | null {
   const s = String(v ?? "").trim();
   if (!s) return null;
+
+  // aceita "12,3" e "12.3"
   const cleaned = s.replace(/\./g, "").replace(",", ".");
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
@@ -110,7 +112,14 @@ function shortModalidadeLabel(s: string) {
   return x;
 }
 
-// ===== util =====
+// ===== Alfabetização (percentual não alfabetizados) =====
+type AlfRow = {
+  territorio: string;
+  data: string;
+  categoria: string;
+  valor: number | null;
+};
+
 function normTxt(s: unknown) {
   return String(s ?? "")
     .trim()
@@ -123,6 +132,14 @@ function isRJ(territorio: string) {
   const t = normTxt(territorio);
   return t === "rj" || t.includes("rio de janeiro");
 }
+
+// ===== KPI SIM/NÃO genérico (violência e psicologia) =====
+type YnRow = {
+  territorio: string;
+  data: string;
+  resposta: string;
+  valor: number | null;
+};
 
 function normalizeHeaderKey(h: unknown): string {
   return String(h ?? "")
@@ -137,7 +154,7 @@ function normalizeHeaderKey(h: unknown): string {
 }
 
 function findCategoryColumn(headersKey: string[]) {
-  const blocked = new Set(["territorio", "data", "valor", "fonte", "indicador", "indicador_id", "indicador_nome"]);
+  const blocked = new Set(["territorio", "data", "valor", "fonte"]);
   for (let i = 0; i < headersKey.length; i++) {
     const h = headersKey[i];
     if (!h) continue;
@@ -146,59 +163,6 @@ function findCategoryColumn(headersKey: string[]) {
   }
   return -1;
 }
-
-// ===== Alfabetização (percentual não alfabetizados) =====
-type AlfRow = {
-  territorio: string;
-  data: string;
-  categoria: string;
-  valor: number | null;
-  indicador?: string;
-};
-
-function pickGroupForAlfabetizacao(rows: AlfRow[]) {
-  // Se tiver indicador, escolhe o grupo que contém categorias com "alfabet"
-  const byInd = new Map<string, AlfRow[]>();
-  rows.forEach((r) => {
-    const k = String(r.indicador ?? "").trim() || "__single__";
-    if (!byInd.has(k)) byInd.set(k, []);
-    byInd.get(k)!.push(r);
-  });
-
-  if (byInd.size <= 1) return rows;
-
-  // escolhe o grupo que tem alguma categoria com "alfabet"
-  let best: { key: string; score: number } | null = null;
-
-  for (const [key, group] of byInd.entries()) {
-    const score =
-      group.filter((g) => normTxt(g.categoria).includes("alfabet")).length;
-
-    if (!best || score > best.score) best = { key, score };
-  }
-
-  if (best && best.score > 0) return byInd.get(best.key)!;
-
-  // fallback: maior grupo
-  let maxKey = "";
-  let maxLen = -1;
-  for (const [key, group] of byInd.entries()) {
-    if (group.length > maxLen) {
-      maxLen = group.length;
-      maxKey = key;
-    }
-  }
-  return byInd.get(maxKey) || rows;
-}
-
-// ===== KPI SIM/NÃO (violência e psicologia) =====
-type YnRow = {
-  territorio: string;
-  data: string;
-  resposta: string;
-  valor: number | null;
-  indicador?: string;
-};
 
 function calcPctFromYesNo(rows: YnRow[], target: "sim" | "nao") {
   const total = rows.reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
@@ -213,47 +177,6 @@ function calcPctFromYesNo(rows: YnRow[], target: "sim" | "nao") {
   const v = match && typeof match.valor === "number" ? match.valor : 0;
   const pct = (v / total) * 100;
   return Number.isFinite(pct) ? pct : null;
-}
-
-function pickGroupYesNo(rows: YnRow[], preferIncludes: string[]) {
-  // Agrupa por indicador (se existir). Se não existir, devolve tudo.
-  const hasIndicator = rows.some((r) => String(r.indicador ?? "").trim());
-  if (!hasIndicator) return rows;
-
-  const byInd = new Map<string, YnRow[]>();
-  rows.forEach((r) => {
-    const k = String(r.indicador ?? "").trim() || "__single__";
-    if (!byInd.has(k)) byInd.set(k, []);
-    byInd.get(k)!.push(r);
-  });
-
-  // score: ter sim e nao + bater preferências no nome do indicador
-  let bestKey = "";
-  let bestScore = -1;
-
-  for (const [key, group] of byInd.entries()) {
-    const hasSim = group.some((g) => normTxt(g.resposta) === "sim");
-    const hasNao = group.some((g) => {
-      const t = normTxt(g.resposta);
-      return t === "nao" || t === "não";
-    });
-
-    let score = 0;
-    if (hasSim) score += 5;
-    if (hasNao) score += 5;
-
-    const keyNorm = normTxt(key);
-    preferIncludes.forEach((p) => {
-      if (keyNorm.includes(normTxt(p))) score += 2;
-    });
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestKey = key;
-    }
-  }
-
-  return byInd.get(bestKey) || rows;
 }
 
 export default function Index() {
@@ -274,7 +197,10 @@ export default function Index() {
   const [kpiUnidades, setKpiUnidades] = useState<number | null>(null);
   const [kpiUnidadesDetails, setKpiUnidadesDetails] = useState<string[]>([]);
 
+  // ✅ percentual de NÃO alfabetizados (mostra só isso no card)
   const [kpiNaoAlfabetizadosPct, setKpiNaoAlfabetizadosPct] = useState<number | null>(null);
+
+  // ✅ NOVOS KPIs
   const [kpiVitimasViolenciaPct, setKpiVitimasViolenciaPct] = useState<number | null>(null);
   const [kpiSemPsicoPct, setKpiSemPsicoPct] = useState<number | null>(null);
 
@@ -512,9 +438,9 @@ export default function Index() {
       });
   }, []);
 
-  // 4) KPI (alfabetizacao): agora vem da aba "educacao"
+  // 4) KPI (alfabetizacao): calcula % não alfabetizados no RJ no último período
   useEffect(() => {
-    getIndicadorSheet("educacao")
+    getIndicadorSheet("alfabetizacao")
       .then((d) => {
         const values: any[][] = d.values || [];
         if (values.length < 2) {
@@ -522,27 +448,23 @@ export default function Index() {
           return;
         }
 
-        const headersKey = (values[0] || []).map(normalizeHeaderKey);
+        const rawHeaders = (values[0] || []).map((x) => String(x ?? "").trim());
+        const headersNorm = rawHeaders.map((h) => normTxt(h));
         const body = values.slice(1);
 
-        const idxTerritorio = headersKey.indexOf("territorio");
-        const idxData = headersKey.indexOf("data");
-        const idxValor = headersKey.indexOf("valor");
+        const idxTerritorio = headersNorm.indexOf("territorio");
+        const idxData = headersNorm.indexOf("data");
+        const idxValor = headersNorm.indexOf("valor");
 
-        // coluna de categoria pode ser alfabetização / alfabetizacao / categoria
-        const catCandidates = ["alfabetizacao", "alfabetização", "categoria", "situacao", "situação"];
+        const catCandidates = ["categoria", "alfabetizacao", "alfabetização", "situacao", "situação"];
         let idxCategoria = -1;
         for (const c of catCandidates) {
-          const i = headersKey.indexOf(normalizeHeaderKey(c));
+          const i = headersNorm.indexOf(normTxt(c));
           if (i >= 0) {
             idxCategoria = i;
             break;
           }
         }
-
-        // indicador_id/indicador
-        let idxIndicador = headersKey.indexOf("indicador_id");
-        if (idxIndicador < 0) idxIndicador = headersKey.indexOf("indicador");
 
         if (idxTerritorio < 0 || idxData < 0 || idxValor < 0 || idxCategoria < 0) {
           setKpiNaoAlfabetizadosPct(null);
@@ -550,7 +472,7 @@ export default function Index() {
         }
 
         let lastDateAny = "";
-        const parsedAll: AlfRow[] = body.map((r) => {
+        const parsed: AlfRow[] = body.map((r) => {
           const rawDate = String(r[idxData] ?? "").trim();
           if (rawDate) lastDateAny = rawDate;
 
@@ -559,12 +481,11 @@ export default function Index() {
             data: rawDate || lastDateAny,
             categoria: String(r[idxCategoria] ?? "").trim(),
             valor: parseNumberOrNull(r[idxValor]),
-            indicador: idxIndicador >= 0 ? String(r[idxIndicador] ?? "").trim() : undefined,
           };
         });
 
-        const rjAll = parsedAll.filter((x) => isRJ(x.territorio));
-        const dates = Array.from(new Set(rjAll.map((x) => x.data).filter(Boolean))).sort();
+        const rj = parsed.filter((x) => isRJ(x.territorio));
+        const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
 
         if (!last) {
@@ -572,8 +493,7 @@ export default function Index() {
           return;
         }
 
-        const rowsLastAll = rjAll.filter((x) => x.data === last);
-        const rowsLast = pickGroupForAlfabetizacao(rowsLastAll);
+        const rowsLast = rj.filter((x) => x.data === last);
 
         const naoRow = rowsLast.find((r) => {
           const c = normTxt(r.categoria);
@@ -599,7 +519,7 @@ export default function Index() {
       });
   }, []);
 
-  // 5) KPI Vítimas de violência: indicador "violencia_s" na aba "violencia"
+  // 5) KPI Vítimas de violência: % "Sim" / total (aba violencia)
   useEffect(() => {
     getIndicadorSheet("violencia")
       .then((d) => {
@@ -617,16 +537,13 @@ export default function Index() {
         const idxVal = headersKey.indexOf("valor");
         const idxCat = findCategoryColumn(headersKey);
 
-        let idxIndicador = headersKey.indexOf("indicador_id");
-        if (idxIndicador < 0) idxIndicador = headersKey.indexOf("indicador");
-
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
           setKpiVitimasViolenciaPct(null);
           return;
         }
 
         let lastDateAny = "";
-        const parsedAll: YnRow[] = body.map((r) => {
+        const parsed: YnRow[] = body.map((r) => {
           const rawDate = String(r[idxData] ?? "").trim();
           if (rawDate) lastDateAny = rawDate;
 
@@ -635,12 +552,11 @@ export default function Index() {
             data: rawDate || lastDateAny,
             resposta: String(r[idxCat] ?? "").trim(),
             valor: parseNumberOrNull(r[idxVal]),
-            indicador: idxIndicador >= 0 ? String(r[idxIndicador] ?? "").trim() : undefined,
           };
         });
 
-        const rjAll = parsedAll.filter((x) => isRJ(x.territorio));
-        const dates = Array.from(new Set(rjAll.map((x) => x.data).filter(Boolean))).sort();
+        const rj = parsed.filter((x) => isRJ(x.territorio));
+        const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
 
         if (!last) {
@@ -648,80 +564,64 @@ export default function Index() {
           return;
         }
 
-        // filtra para o indicador violencia_s quando existir a coluna
-        const rowsLastAll = rjAll.filter((x) => x.data === last);
-        const filteredByIndicador =
-          rowsLastAll.some((r) => String(r.indicador ?? "").trim())
-            ? rowsLastAll.filter((r) => normTxt(r.indicador).includes("violencia_s"))
-            : rowsLastAll;
-
-        const rowsLast = filteredByIndicador.length ? filteredByIndicador : rowsLastAll;
-
-        // garante que estamos pegando o grupo sim/não correto
-        const group = pickGroupYesNo(rowsLast, ["violencia", "violencia_s"]);
-
-        setKpiVitimasViolenciaPct(calcPctFromYesNo(group, "sim"));
+        const rowsLast = rj.filter((x) => x.data === last);
+        setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim"));
       })
       .catch(() => setKpiVitimasViolenciaPct(null));
   }, []);
 
-  // 6) KPI Sem acompanhamento psicológico individualizado: aba "saude"
+  // 6) KPI Sem acompanhamento psicológico individualizado: % "Não" / total
+  // tenta primeiro uma aba dedicada; se não existir, tenta saude
   useEffect(() => {
-    getIndicadorSheet("saude")
-      .then((d) => {
-        const values: any[][] = d.values || [];
-        if (values.length < 2) {
-          setKpiSemPsicoPct(null);
+    const trySheets = async () => {
+      const candidates = ["psicologico", "psicologia", "saude"];
+      for (const sheet of candidates) {
+        try {
+          const d = await getIndicadorSheet(sheet);
+          const values: any[][] = d.values || [];
+          if (values.length < 2) continue;
+
+          const headersKey = (values[0] || []).map(normalizeHeaderKey);
+          const body = values.slice(1);
+
+          const idxTerr = headersKey.indexOf("territorio");
+          const idxData = headersKey.indexOf("data");
+          const idxVal = headersKey.indexOf("valor");
+          const idxCat = findCategoryColumn(headersKey);
+
+          if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) continue;
+
+          let lastDateAny = "";
+          const parsed: YnRow[] = body.map((r) => {
+            const rawDate = String(r[idxData] ?? "").trim();
+            if (rawDate) lastDateAny = rawDate;
+
+            return {
+              territorio: String(r[idxTerr] ?? "").trim(),
+              data: rawDate || lastDateAny,
+              resposta: String(r[idxCat] ?? "").trim(),
+              valor: parseNumberOrNull(r[idxVal]),
+            };
+          });
+
+          const rj = parsed.filter((x) => isRJ(x.territorio));
+          const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
+          const last = dates[dates.length - 1];
+
+          if (!last) continue;
+
+          const rowsLast = rj.filter((x) => x.data === last);
+          setKpiSemPsicoPct(calcPctFromYesNo(rowsLast, "nao"));
           return;
+        } catch {
+          // tenta a próxima aba
         }
+      }
 
-        const headersKey = (values[0] || []).map(normalizeHeaderKey);
-        const body = values.slice(1);
+      setKpiSemPsicoPct(null);
+    };
 
-        const idxTerr = headersKey.indexOf("territorio");
-        const idxData = headersKey.indexOf("data");
-        const idxVal = headersKey.indexOf("valor");
-        const idxCat = findCategoryColumn(headersKey);
-
-        let idxIndicador = headersKey.indexOf("indicador_id");
-        if (idxIndicador < 0) idxIndicador = headersKey.indexOf("indicador");
-
-        if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
-          setKpiSemPsicoPct(null);
-          return;
-        }
-
-        let lastDateAny = "";
-        const parsedAll: YnRow[] = body.map((r) => {
-          const rawDate = String(r[idxData] ?? "").trim();
-          if (rawDate) lastDateAny = rawDate;
-
-          return {
-            territorio: String(r[idxTerr] ?? "").trim(),
-            data: rawDate || lastDateAny,
-            resposta: String(r[idxCat] ?? "").trim(),
-            valor: parseNumberOrNull(r[idxVal]),
-            indicador: idxIndicador >= 0 ? String(r[idxIndicador] ?? "").trim() : undefined,
-          };
-        });
-
-        const rjAll = parsedAll.filter((x) => isRJ(x.territorio));
-        const dates = Array.from(new Set(rjAll.map((x) => x.data).filter(Boolean))).sort();
-        const last = dates[dates.length - 1];
-
-        if (!last) {
-          setKpiSemPsicoPct(null);
-          return;
-        }
-
-        const rowsLastAll = rjAll.filter((x) => x.data === last);
-
-        // escolhe um grupo com sim/não e que pareça ser sobre psicologia/individualizado/acompanhamento
-        const group = pickGroupYesNo(rowsLastAll, ["psico", "psicol", "individual", "acompanh"]);
-
-        setKpiSemPsicoPct(calcPctFromYesNo(group, "nao"));
-      })
-      .catch(() => setKpiSemPsicoPct(null));
+    trySheets();
   }, []);
 
   const KPI_BASE = [
@@ -784,7 +684,9 @@ export default function Index() {
         return {
           ...kpi,
           value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
-          details: ["Entre os acolhidos com idade para já estarem alfabetizados (8 anos pra cima)."],
+          details: [
+            "Entre crianças e adolescentes acolhidos que já deveriam estar alfabetizados (8+)",
+          ],
         };
       }
 
