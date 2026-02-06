@@ -14,6 +14,7 @@ type CatalogRow = {
   indicador_nome?: string;
   fonte?: string;
   fonte_url?: string;
+  nota_explicativa?: string; // Nova coluna (opcional)
   sheet?: string;
   range?: string;
   tipo?: string;
