@@ -218,6 +218,9 @@ export function IndicatorResults({
     return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
   }, [filters.indicador, catalogo]);
 
+  const notaExplicativa =
+  (meta as any)?.nota_explicativa || (meta as any)?.nota || (meta as any)?.notas;
+
   const isFaixaEtaria = useMemo(() => {
     const id = String(filters.indicador || "").toLowerCase();
     const name = String(meta?.indicador_nome || meta?.titulo || "").toLowerCase();
