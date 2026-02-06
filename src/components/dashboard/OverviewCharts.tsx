@@ -4,9 +4,8 @@ import {
   Bar,
   LineChart,
   Line,
-  PieChart, // ✅ Adicionado
-  Pie,      // ✅ Adicionado
-  Legend,   // ✅ Adicionado
+  PieChart,
+  Pie,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -274,9 +273,9 @@ export function OverviewCharts() {
       .catch(() => setAgeData([]));
   }, []);
 
-  // ===== Recorte racial (aba raça) - ✅ CORRIGIDO NOME DA ABA E FORMATO DONUT =====
+  // ===== Recorte racial (aba raça) - ✅ CORRIGIDO NOME E CÁLCULO % =====
   useEffect(() => {
-    getIndicadorSheet("raça") // ✅ mudado de "raca" para "raça"
+    getIndicadorSheet("raça")
       .then((d) => {
         const values: any[][] = d.values || [];
         if (values.length < 2) {
@@ -295,7 +294,6 @@ export function OverviewCharts() {
 
         let idxCat = headersNorm.indexOf("raca");
         if (idxCat < 0) idxCat = headersNorm.indexOf("raça");
-        if (idxCat < 0) idxCat = headersNorm.indexOf("categoria");
         if (idxCat < 0) idxCat = detectCategoryFallback(headersNorm);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
@@ -328,11 +326,16 @@ export function OverviewCharts() {
           return;
         }
 
-        const rowsLast = filtered.filter((r) => r.data === last);
+        const rowsLast = filtered.filter((r) => r.data === last && r.categoria && typeof r.valor === "number");
+        
+        // Calcula o total para extrair a porcentagem
+        const totalRaca = rowsLast.reduce((acc, r) => acc + (r.valor || 0), 0);
 
         const mapped = rowsLast
-          .filter((r) => r.categoria && typeof r.valor === "number" && r.valor > 0)
-          .map((r) => ({ name: r.categoria, value: r.valor as number }))
+          .map((r) => ({ 
+            name: r.categoria, 
+            value: totalRaca > 0 ? ((r.valor || 0) / totalRaca) * 100 : 0 
+          }))
           .sort((a, b) => b.value - a.value);
 
         setRacaData(mapped);
@@ -340,7 +343,7 @@ export function OverviewCharts() {
       .catch(() => setRacaData([]));
   }, []);
 
-  // ===== Maiores Necessidades (aba doacao) em PERCENTUAL com total fixo 129 (não aparece na UI) =====
+  // ===== Maiores Necessidades (aba doacao) em PERCENTUAL =====
   useEffect(() => {
     getIndicadorSheet("doacao")
       .then((d) => {
@@ -361,8 +364,6 @@ export function OverviewCharts() {
 
         let idxCat = headersNorm.indexOf("categoria");
         if (idxCat < 0) idxCat = headersNorm.indexOf("necessidade");
-        if (idxCat < 0) idxCat = headersNorm.indexOf("necessidades");
-        if (idxCat < 0) idxCat = headersNorm.indexOf("item");
         if (idxCat < 0) idxCat = detectCategoryFallback(headersNorm);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
@@ -398,11 +399,6 @@ export function OverviewCharts() {
         const rowsLast = filtered
           .filter((r) => r.data === last)
           .filter((r) => r.categoria && typeof r.valor === "number" && r.valor > 0);
-
-        if (NEEDS_TOTAL <= 0) {
-          setNeedsData([]);
-          return;
-        }
 
         const mapped = rowsLast
           .map((r) => ({
@@ -449,7 +445,6 @@ export function OverviewCharts() {
                     backgroundColor: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "8px",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                   }}
                   labelFormatter={(label) => `Referência: ${formatDateBR(label)}`}
                   formatter={(value: number) => [value.toLocaleString("pt-BR"), "Acolhidos"]}
@@ -460,7 +455,6 @@ export function OverviewCharts() {
                   stroke={PRIMARY_COLOR}
                   strokeWidth={2}
                   dot={{ fill: PRIMARY_COLOR, strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -468,7 +462,7 @@ export function OverviewCharts() {
         </div>
       )}
 
-      {/* Faixa etária (PERCENTUAL) */}
+      {/* Faixa etária */}
       {ageData.length === 0 ? (
         <EmptyState title="Distribuição por Faixa Etária" />
       ) : (
@@ -482,14 +476,12 @@ export function OverviewCharts() {
                   type="number"
                   domain={[0, 100]}
                   tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
                   tickFormatter={(v) => `${Number(v).toFixed(0)}%`}
                 />
                 <YAxis
                   type="category"
                   dataKey="name"
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
                   width={130}
                 />
                 <Tooltip
@@ -520,30 +512,19 @@ export function OverviewCharts() {
                   data={racaData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60} // ✅ Cria o furo do donut
+                  innerRadius={60} // ✅ Cria o formato Donut
                   outerRadius={80}
                   paddingAngle={5}
                   dataKey="value"
-                  nameKey="name"
+                  isAnimationActive={true} // ✅ Animação de entrada
+                  animationDuration={1000}
+                  label={({ name, value }) => `${name}: ${value.toFixed(1).replace(".", ",")}%`} // ✅ Categoria: Valor% ao lado
                 >
                   {racaData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                  formatter={(value: number) => [value.toLocaleString("pt-BR"), "Acolhidos"]}
-                />
-                <Legend 
-                  layout="vertical" 
-                  verticalAlign="middle" 
-                  align="right"
-                  wrapperStyle={{ fontSize: '11px' }}
-                />
+                {/* Tooltip e Legenda removidos conforme solicitado */}
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -564,14 +545,12 @@ export function OverviewCharts() {
                   type="number"
                   domain={[0, 100]}
                   tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
                   tickFormatter={(v) => `${Number(v).toFixed(0)}%`}
                 />
                 <YAxis
                   type="category"
                   dataKey="name"
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
                   width={200}
                   interval={0}
                 />
