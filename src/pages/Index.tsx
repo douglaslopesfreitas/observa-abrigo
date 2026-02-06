@@ -487,7 +487,7 @@ export default function Index() {
       id: "nao_alfabetizados",
       label: "Não alfabetizados",
       value: null,
-      unit: "",
+      unit: "%",
     },
     {
       id: "tempo_medio",
@@ -523,7 +523,7 @@ export default function Index() {
 
         return {
           ...kpi,
-          value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
+         value: pct != null ? pct : null,
           details: [],
         };
       }
