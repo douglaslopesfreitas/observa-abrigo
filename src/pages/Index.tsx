@@ -308,7 +308,9 @@ export default function Index() {
         order.forEach((mod) => {
           const v = byMod.get(mod);
           if (typeof v === "number" && v > 0) {
-            lines.push(`Em ${mod}: ${v.toLocaleString("pt-BR")}`);
+            // ✅ FIX "Em Em": Verificamos se a modalidade já começa com "Em"
+            const label = mod.toLowerCase().startsWith("em ") ? mod : `Em ${mod}`;
+            lines.push(`${label}: ${v.toLocaleString("pt-BR")}`);
           }
         });
 
@@ -316,7 +318,10 @@ export default function Index() {
           .filter(([mod]) => !order.includes(mod))
           .sort((a, b) => b[1] - a[1])
           .forEach(([mod, v]) => {
-            if (v > 0) lines.push(`Em ${mod}: ${v.toLocaleString("pt-BR")}`);
+            if (v > 0) {
+              const label = mod.toLowerCase().startsWith("em ") ? mod : `Em ${mod}`;
+              lines.push(`${label}: ${v.toLocaleString("pt-BR")}`);
+            }
           });
 
         setKpiAcolhidosDetails(lines);
@@ -438,7 +443,7 @@ export default function Index() {
       });
   }, []);
 
-  // 4) ✅ KPI (alfabetizacao): busca da aba educacao e faz o calculo de porcentagem somando o total
+  // 4) ✅ KPI (educacao): Lógica corrigida para somar total da aba educacao
   useEffect(() => {
     getIndicadorSheet("educacao")
       .then((d) => {
@@ -460,10 +465,7 @@ export default function Index() {
         let idxCategoria = -1;
         for (const c of catCandidates) {
           const i = headersNorm.indexOf(normTxt(c));
-          if (i >= 0) {
-            idxCategoria = i;
-            break;
-          }
+          if (i >= 0) { idxCategoria = i; break; }
         }
 
         if (idxTerritorio < 0 || idxData < 0 || idxValor < 0 || idxCategoria < 0) {
@@ -495,7 +497,6 @@ export default function Index() {
 
         const rowsLast = rj.filter((x) => x.data === last);
 
-        // Numerador: busca a linha de Não Alfabetizados
         const naoRow = rowsLast.find((r) => {
           const c = normTxt(r.categoria);
           return c.includes("nao") && c.includes("alfabet");
@@ -503,7 +504,6 @@ export default function Index() {
 
         const nao = naoRow && typeof naoRow.valor === "number" ? naoRow.valor : 0;
 
-        // Denominador: soma todos os valores presentes na aba para aquela data (Total 8+)
         const total = rowsLast.reduce((acc, r) => {
           const v = typeof r.valor === "number" ? r.valor : 0;
           return acc + (Number.isFinite(v) ? v : 0);
