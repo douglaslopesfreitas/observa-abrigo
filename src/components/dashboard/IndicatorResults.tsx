@@ -80,7 +80,7 @@ function FonteLine({ fonte, url }: { fonte?: string; url?: string }) {
     <div className="text-sm text-muted-foreground">
       Fonte:{" "}
       {url ? (
-        
+        <a
           href={url}
           target="_blank"
           rel="noreferrer"
