@@ -155,7 +155,7 @@ function normalizeHeaderKey(h: unknown): string {
 }
 
 function findCategoryColumn(headersKey: string[]) {
-  const blocked = new Set(["territorio", "data", "valor", "fonte", "indicador_id"]);
+  const blocked = new Set(["territorio", "data", "valor", "fonte", "indicador_id", "indicador"]);
   for (let i = 0; i < headersKey.length; i++) {
     const h = headersKey[i];
     if (!h) continue;
@@ -522,7 +522,7 @@ export default function Index() {
       });
   }, []);
 
-  // 5) ✅ KPI Vítimas de violência: Filtrado pelo indicador_id "violencia_s" e pegando porcentagem do "Sim"
+  // 5) ✅ KPI Vítimas de violência: Filtra pelo indicador_id "violencia_s" e calcula % "Sim"
   useEffect(() => {
     getIndicadorSheet("violencia")
       .then((d) => {
@@ -532,16 +532,26 @@ export default function Index() {
           return;
         }
 
-        const headersKey = (values[0] || []).map(normalizeHeaderKey);
+        const rawHeaders = (values[0] || []).map((x) => String(x ?? "").trim());
+        const headersNorm = rawHeaders.map((h) => normalizeHeaderKey(h));
         const body = values.slice(1);
 
-        const idxTerr = headersKey.indexOf("territorio");
-        const idxData = headersKey.indexOf("data");
-        const idxVal = headersKey.indexOf("valor");
-        const idxId = headersKey.indexOf("indicador_id"); // ✅ Procuramos a coluna de ID
-        const idxCat = findCategoryColumn(headersKey);
+        const idxTerr = headersNorm.indexOf("territorio");
+        const idxData = headersNorm.indexOf("data");
+        const idxVal = headersNorm.indexOf("valor");
+        
+        // Procura a coluna de ID do indicador de forma flexível
+        const idCandidates = ["indicador_id", "indicador", "id_indicador"];
+        let idxId = -1;
+        for (const c of idCandidates) {
+          const i = headersNorm.indexOf(normalizeHeaderKey(c));
+          if (i >= 0) { idxId = i; break; }
+        }
+
+        const idxCat = findCategoryColumn(headersNorm);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
+          console.warn("Violência: Colunas não encontradas", { idxTerr, idxData, idxVal, idxCat });
           setKpiVitimasViolenciaPct(null);
           return;
         }
@@ -556,16 +566,18 @@ export default function Index() {
             data: rawDate || lastDateAny,
             resposta: String(r[idxCat] ?? "").trim(),
             valor: parseNumberOrNull(r[idxVal]),
-            indicador_id: idxId >= 0 ? String(r[idxId] ?? "").trim() : undefined // ✅ Mapeamos o ID
+            indicador_id: idxId >= 0 ? String(r[idxId] ?? "").trim() : undefined
           };
         });
 
-        // ✅ FILTRO: Somente RJ e Somente o indicador "violencia_s"
-        const filteredByIndicator = parsed.filter((x) => 
-          isRJ(x.territorio) && x.indicador_id === "violencia_s"
-        );
+        // ✅ FILTRO CRÍTICO: apenas RJ e apenas o ID "violencia_s"
+        const filteredRows = parsed.filter((x) => {
+           const matchRJ = isRJ(x.territorio);
+           const matchID = x.indicador_id ? normTxt(x.indicador_id) === "violencia_s" : true; 
+           return matchRJ && matchID;
+        });
 
-        const dates = Array.from(new Set(filteredByIndicator.map((x) => x.data).filter(Boolean))).sort();
+        const dates = Array.from(new Set(filteredRows.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
 
         if (!last) {
@@ -573,10 +585,13 @@ export default function Index() {
           return;
         }
 
-        const rowsLast = filteredByIndicator.filter((x) => x.data === last);
-        setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim")); // ✅ Porcentagem do Sim
+        const rowsLast = filteredRows.filter((x) => x.data === last);
+        setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim"));
       })
-      .catch(() => setKpiVitimasViolenciaPct(null));
+      .catch((err) => {
+        console.error("Erro no KPI Violência:", err);
+        setKpiVitimasViolenciaPct(null);
+      });
   }, []);
 
   // 6) KPI Sem acompanhamento psicológico individualizado: % "Não" / total
