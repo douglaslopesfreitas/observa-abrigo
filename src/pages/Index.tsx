@@ -29,7 +29,6 @@ type CatalogRow = {
 function parseNumberOrNull(v: unknown): number | null {
   const s = String(v ?? "").trim();
   if (!s) return null;
-
   // aceita "12,3" e "12.3"
   const cleaned = s.replace(/\./g, "").replace(",", ".");
   const n = Number(cleaned);
@@ -38,10 +37,8 @@ function parseNumberOrNull(v: unknown): number | null {
 
 function rowsToCatalog(values: any[][]): CatalogRow[] {
   if (!Array.isArray(values) || values.length < 2) return [];
-
   const headers = values[0].map((h) => String(h ?? "").trim().toLowerCase());
   const body = values.slice(1);
-
   return body.map((r) => {
     const obj: any = {};
     headers.forEach((headerName, index) => {
@@ -64,14 +61,8 @@ function computeTotalForDate(rows: AcolhidosRow[], date: string): number {
     (r) => r.data === date && r.modalidade === "Em todos os acolhimentos"
   );
   if (totalRow && typeof totalRow.valor === "number") return totalRow.valor;
-
   return rows
-    .filter(
-      (r) =>
-        r.data === date &&
-        r.modalidade &&
-        r.modalidade !== "Em todos os acolhimentos"
-    )
+    .filter((r) => r.data === date && r.modalidade && r.modalidade !== "Em todos os acolhimentos")
     .reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
 }
 
@@ -86,17 +77,9 @@ function computeTotalAbrigosForDate(rows: AbrigosRow[], date: string): number {
   const totalRow =
     rows.find((r) => r.data === date && r.modalidade === "Todos os acolhimentos") ||
     rows.find((r) => r.data === date && r.modalidade === "Em todos os acolhimentos");
-
   if (totalRow && typeof totalRow.valor === "number") return totalRow.valor;
-
   return rows
-    .filter(
-      (r) =>
-        r.data === date &&
-        r.modalidade &&
-        r.modalidade !== "Todos os acolhimentos" &&
-        r.modalidade !== "Em todos os acolhimentos"
-    )
+    .filter((r) => r.data === date && r.modalidade && r.modalidade !== "Todos os acolhimentos" && r.modalidade !== "Em todos os acolhimentos")
     .reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
 }
 
@@ -167,13 +150,11 @@ function findCategoryColumn(headersKey: string[]) {
 function calcPctFromYesNo(rows: YnRow[], target: "sim" | "nao") {
   const total = rows.reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
   if (!total || total <= 0) return null;
-
   const match = rows.find((r) => {
     const t = normTxt(r.resposta);
     if (target === "sim") return t === "sim";
     return t === "nao" || t === "não";
   });
-
   const v = match && typeof match.valor === "number" ? match.valor : 0;
   const pct = (v / total) * 100;
   return Number.isFinite(pct) ? pct : null;
@@ -193,14 +174,13 @@ export default function Index() {
   const [kpiAcolhidos, setKpiAcolhidos] = useState<number | null>(null);
   const [kpiAcolhidosChangePct, setKpiAcolhidosChangePct] = useState<number | null>(null);
   const [kpiAcolhidosDetails, setKpiAcolhidosDetails] = useState<string[]>([]);
-
   const [kpiUnidades, setKpiUnidades] = useState<number | null>(null);
   const [kpiUnidadesDetails, setKpiUnidadesDetails] = useState<string[]>([]);
 
-  // ✅ percentual de NÃO alfabetizados (mostra só isso no card)
+  // ✅ percentual de NÃO alfabetizados
   const [kpiNaoAlfabetizadosPct, setKpiNaoAlfabetizadosPct] = useState<number | null>(null);
 
-  // ✅ NOVOS KPIs
+  // ✅ Outros KPIs
   const [kpiVitimasViolenciaPct, setKpiVitimasViolenciaPct] = useState<number | null>(null);
   const [kpiSemPsicoPct, setKpiSemPsicoPct] = useState<number | null>(null);
 
@@ -208,7 +188,7 @@ export default function Index() {
     setFilters(newFilters);
   }, []);
 
-  // 1) Carrega catálogo do Sheets
+  // 1) Carrega catálogo
   useEffect(() => {
     async function loadCatalogo() {
       setCatalogoLoading(true);
@@ -225,38 +205,25 @@ export default function Index() {
     loadCatalogo();
   }, []);
 
-  // 2) KPI (acolhidos): total RJ + breakdown por modalidade
+  // 2) KPI (acolhidos)
   useEffect(() => {
     getIndicadorSheet("acolhidos")
       .then((d) => {
         const values: any[][] = d.values || [];
-        if (values.length < 2) {
-          setKpiAcolhidos(null);
-          setKpiAcolhidosChangePct(null);
-          setKpiAcolhidosDetails([]);
-          return;
-        }
-
+        if (values.length < 2) return;
         const headers = values[0].map((x) => String(x ?? "").trim().toLowerCase());
         const body = values.slice(1);
-
         const idxTerritorio = headers.indexOf("territorio");
         const idxData = headers.indexOf("data");
         const idxModalidade = headers.indexOf("modalidade");
         const idxValor = headers.indexOf("valor");
 
-        if (idxTerritorio < 0 || idxData < 0 || idxModalidade < 0 || idxValor < 0) {
-          setKpiAcolhidos(null);
-          setKpiAcolhidosChangePct(null);
-          setKpiAcolhidosDetails([]);
-          return;
-        }
+        if (idxTerritorio < 0 || idxData < 0 || idxModalidade < 0 || idxValor < 0) return;
 
         let lastDateAny = "";
         const parsed: AcolhidosRow[] = body.map((r) => {
           const rawDate = String(r[idxData] ?? "").trim();
           if (rawDate) lastDateAny = rawDate;
-
           return {
             territorio: String(r[idxTerritorio] ?? "").trim(),
             data: rawDate || lastDateAny,
@@ -267,110 +234,51 @@ export default function Index() {
 
         const rj = parsed.filter((x) => x.territorio === "RJ");
         const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
-
         const last = dates[dates.length - 1];
-        const prev = dates.length >= 2 ? dates[dates.length - 2] : null;
-
-        if (!last) {
-          setKpiAcolhidos(null);
-          setKpiAcolhidosChangePct(null);
-          setKpiAcolhidosDetails([]);
-          return;
-        }
+        if (!last) return;
 
         const lastTotal = computeTotalForDate(rj, last);
         setKpiAcolhidos(Number.isFinite(lastTotal) ? lastTotal : null);
 
         const rowsLast = rj.filter((x) => x.data === last);
         const byMod = new Map<string, number>();
-
         rowsLast.forEach((r) => {
           const mod = (r.modalidade || "").trim();
-          if (!mod) return;
-          if (mod === "Em todos os acolhimentos") return;
-
+          if (!mod || mod === "Em todos os acolhimentos") return;
           const v = typeof r.valor === "number" ? r.valor : 0;
-          if (!Number.isFinite(v) || v <= 0) return;
-
-          byMod.set(mod, (byMod.get(mod) || 0) + v);
+          if (v > 0) byMod.set(mod, (byMod.get(mod) || 0) + v);
         });
 
-        const order = [
-          "Acolhimento Institucional",
-          "Famílias Acolhedoras",
-          "Casa-Lar",
-          "Acolhimento Especializado em Dependentes Químicos",
-          "Acolhimentos de Segunda à Sexta",
-          "Acolhimento para Aluno Residente",
-        ];
-
+        const order = ["Acolhimento Institucional", "Famílias Acolhedoras", "Casa-Lar"];
         const lines: string[] = [];
         order.forEach((mod) => {
           const v = byMod.get(mod);
-          if (typeof v === "number" && v > 0) {
-            lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
-          }
+          if (v) lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
         });
-
-        Array.from(byMod.entries())
-          .filter(([mod]) => !order.includes(mod))
-          .sort((a, b) => b[1] - a[1])
-          .forEach(([mod, v]) => {
-            if (v > 0) lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
-          });
-
         setKpiAcolhidosDetails(lines);
-
-        // cálculo mantido (não exibido no card)
-        if (prev) {
-          const prevTotal = computeTotalForDate(rj, prev);
-          if (prevTotal > 0) {
-            const pct = ((lastTotal - prevTotal) / prevTotal) * 100;
-            setKpiAcolhidosChangePct(Number.isFinite(pct) ? pct : null);
-          } else {
-            setKpiAcolhidosChangePct(null);
-          }
-        } else {
-          setKpiAcolhidosChangePct(null);
-        }
       })
-      .catch(() => {
-        setKpiAcolhidos(null);
-        setKpiAcolhidosChangePct(null);
-        setKpiAcolhidosDetails([]);
-      });
+      .catch(() => {});
   }, []);
 
-  // 3) KPI (abrigos): total RJ + breakdown por modalidade
+  // 3) KPI (unidades/abrigos)
   useEffect(() => {
     getIndicadorSheet("abrigos")
       .then((d) => {
         const values: any[][] = d.values || [];
-        if (values.length < 2) {
-          setKpiUnidades(null);
-          setKpiUnidadesDetails([]);
-          return;
-        }
-
+        if (values.length < 2) return;
         const headers = values[0].map((x) => String(x ?? "").trim().toLowerCase());
         const body = values.slice(1);
-
         const idxTerritorio = headers.indexOf("territorio");
         const idxData = headers.indexOf("data");
         const idxModalidade = headers.indexOf("modalidade");
         const idxValor = headers.indexOf("valor");
 
-        if (idxTerritorio < 0 || idxData < 0 || idxModalidade < 0 || idxValor < 0) {
-          setKpiUnidades(null);
-          setKpiUnidadesDetails([]);
-          return;
-        }
+        if (idxTerritorio < 0 || idxData < 0 || idxModalidade < 0 || idxValor < 0) return;
 
         let lastDateAny = "";
         const parsed: AbrigosRow[] = body.map((r) => {
           const rawDate = String(r[idxData] ?? "").trim();
           if (rawDate) lastDateAny = rawDate;
-
           return {
             territorio: String(r[idxTerritorio] ?? "").trim(),
             data: rawDate || lastDateAny,
@@ -382,65 +290,35 @@ export default function Index() {
         const rj = parsed.filter((x) => x.territorio === "RJ");
         const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
-
-        if (!last) {
-          setKpiUnidades(null);
-          setKpiUnidadesDetails([]);
-          return;
-        }
+        if (!last) return;
 
         const lastTotal = computeTotalAbrigosForDate(rj, last);
         setKpiUnidades(Number.isFinite(lastTotal) ? lastTotal : null);
 
         const rowsLast = rj.filter((x) => x.data === last);
-
-        const order = [
-          "Acolhimento Institucional",
-          "Famílias Acolhedoras",
-          "Casa-Lar",
-          "Acolhimento Especializado em Dependentes Químicos",
-          "Acolhimentos de Segunda à Sexta",
-          "Acolhimento para Aluno Residente",
-        ];
-
+        const lines: string[] = [];
+        const order = ["Acolhimento Institucional", "Famílias Acolhedoras", "Casa-Lar"];
+        
         const byMod = new Map<string, number>();
         rowsLast.forEach((r) => {
           const mod = (r.modalidade || "").trim();
-          if (!mod) return;
-          if (mod === "Todos os acolhimentos" || mod === "Em todos os acolhimentos") return;
-
+          if (!mod || mod.includes("todos")) return;
           const v = typeof r.valor === "number" ? r.valor : 0;
-          if (!Number.isFinite(v) || v <= 0) return;
-
-          byMod.set(mod, (byMod.get(mod) || 0) + v);
+          if (v > 0) byMod.set(mod, (byMod.get(mod) || 0) + v);
         });
 
-        const lines: string[] = [];
         order.forEach((mod) => {
           const v = byMod.get(mod);
-          if (typeof v === "number" && v > 0) {
-            lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
-          }
+          if (v) lines.push(`${shortModalidadeLabel(mod)}: ${v}`);
         });
-
-        Array.from(byMod.entries())
-          .filter(([mod]) => !order.includes(mod))
-          .sort((a, b) => b[1] - a[1])
-          .forEach(([mod, v]) => {
-            if (v > 0) lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
-          });
-
         setKpiUnidadesDetails(lines);
       })
-      .catch(() => {
-        setKpiUnidades(null);
-        setKpiUnidadesDetails([]);
-      });
+      .catch(() => {});
   }, []);
 
-  // 4) KPI (alfabetizacao): calcula % não alfabetizados no RJ no último período
+  // 4) ✅ KPI (educacao): Calcula % de não alfabetizados somando o total da aba educacao
   useEffect(() => {
-    getIndicadorSheet("alfabetizacao")
+    getIndicadorSheet("educacao") // Alterado para buscar da aba "educacao"
       .then((d) => {
         const values: any[][] = d.values || [];
         if (values.length < 2) {
@@ -456,17 +334,16 @@ export default function Index() {
         const idxData = headersNorm.indexOf("data");
         const idxValor = headersNorm.indexOf("valor");
 
+        // Identifica a coluna que diz "Alfabetizado" ou "Não Alfabetizado"
         const catCandidates = ["categoria", "alfabetizacao", "alfabetização", "situacao", "situação"];
         let idxCategoria = -1;
         for (const c of catCandidates) {
           const i = headersNorm.indexOf(normTxt(c));
-          if (i >= 0) {
-            idxCategoria = i;
-            break;
-          }
+          if (i >= 0) { idxCategoria = i; break; }
         }
 
         if (idxTerritorio < 0 || idxData < 0 || idxValor < 0 || idxCategoria < 0) {
+          console.warn("Colunas não encontradas na aba educacao. Verifique os cabeçalhos.");
           setKpiNaoAlfabetizadosPct(null);
           return;
         }
@@ -475,7 +352,6 @@ export default function Index() {
         const parsed: AlfRow[] = body.map((r) => {
           const rawDate = String(r[idxData] ?? "").trim();
           if (rawDate) lastDateAny = rawDate;
-
           return {
             territorio: String(r[idxTerritorio] ?? "").trim(),
             data: rawDate || lastDateAny,
@@ -495,58 +371,51 @@ export default function Index() {
 
         const rowsLast = rj.filter((x) => x.data === last);
 
+        // SOMAR TUDO (Total de crianças 8+ na planilha)
+        const totalAba = rowsLast.reduce((acc, r) => {
+          const v = typeof r.valor === "number" ? r.valor : 0;
+          return acc + v;
+        }, 0);
+
+        // Encontrar a linha dos NÃO alfabetizados
         const naoRow = rowsLast.find((r) => {
           const c = normTxt(r.categoria);
           return c.includes("nao") && c.includes("alfabet");
         });
 
-        const nao = naoRow && typeof naoRow.valor === "number" ? naoRow.valor : null;
+        const valorNao = naoRow && typeof naoRow.valor === "number" ? naoRow.valor : 0;
 
-        const total = rowsLast.reduce((acc, r) => {
-          const v = typeof r.valor === "number" ? r.valor : 0;
-          return acc + (Number.isFinite(v) ? v : 0);
-        }, 0);
-
-        if (typeof nao === "number" && total > 0) {
-          const pct = (nao / total) * 100;
+        if (totalAba > 0) {
+          const pct = (valorNao / totalAba) * 100;
           setKpiNaoAlfabetizadosPct(Number.isFinite(pct) ? pct : null);
         } else {
           setKpiNaoAlfabetizadosPct(null);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Erro na aba educacao:", err);
         setKpiNaoAlfabetizadosPct(null);
       });
   }, []);
 
-  // 5) KPI Vítimas de violência: % "Sim" / total (aba violencia)
+  // 5) KPI Violência
   useEffect(() => {
     getIndicadorSheet("violencia")
       .then((d) => {
         const values: any[][] = d.values || [];
-        if (values.length < 2) {
-          setKpiVitimasViolenciaPct(null);
-          return;
-        }
-
+        if (values.length < 2) return;
         const headersKey = (values[0] || []).map(normalizeHeaderKey);
-        const body = values.slice(1);
-
         const idxTerr = headersKey.indexOf("territorio");
         const idxData = headersKey.indexOf("data");
         const idxVal = headersKey.indexOf("valor");
         const idxCat = findCategoryColumn(headersKey);
+        if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) return;
 
-        if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
-          setKpiVitimasViolenciaPct(null);
-          return;
-        }
-
+        const body = values.slice(1);
         let lastDateAny = "";
         const parsed: YnRow[] = body.map((r) => {
           const rawDate = String(r[idxData] ?? "").trim();
           if (rawDate) lastDateAny = rawDate;
-
           return {
             territorio: String(r[idxTerr] ?? "").trim(),
             data: rawDate || lastDateAny,
@@ -558,20 +427,14 @@ export default function Index() {
         const rj = parsed.filter((x) => isRJ(x.territorio));
         const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
-
-        if (!last) {
-          setKpiVitimasViolenciaPct(null);
-          return;
+        if (last) {
+          setKpiVitimasViolenciaPct(calcPctFromYesNo(rj.filter(x => x.data === last), "sim"));
         }
-
-        const rowsLast = rj.filter((x) => x.data === last);
-        setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim"));
       })
-      .catch(() => setKpiVitimasViolenciaPct(null));
+      .catch(() => {});
   }, []);
 
-  // 6) KPI Sem acompanhamento psicológico individualizado: % "Não" / total
-  // tenta primeiro uma aba dedicada; se não existir, tenta saude
+  // 6) KPI Psicologia
   useEffect(() => {
     const trySheets = async () => {
       const candidates = ["psicologico", "psicologia", "saude"];
@@ -580,22 +443,18 @@ export default function Index() {
           const d = await getIndicadorSheet(sheet);
           const values: any[][] = d.values || [];
           if (values.length < 2) continue;
-
           const headersKey = (values[0] || []).map(normalizeHeaderKey);
-          const body = values.slice(1);
-
           const idxTerr = headersKey.indexOf("territorio");
           const idxData = headersKey.indexOf("data");
           const idxVal = headersKey.indexOf("valor");
           const idxCat = findCategoryColumn(headersKey);
-
           if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) continue;
 
+          const body = values.slice(1);
           let lastDateAny = "";
           const parsed: YnRow[] = body.map((r) => {
             const rawDate = String(r[idxData] ?? "").trim();
             if (rawDate) lastDateAny = rawDate;
-
             return {
               territorio: String(r[idxTerr] ?? "").trim(),
               data: rawDate || lastDateAny,
@@ -607,167 +466,71 @@ export default function Index() {
           const rj = parsed.filter((x) => isRJ(x.territorio));
           const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
           const last = dates[dates.length - 1];
-
-          if (!last) continue;
-
-          const rowsLast = rj.filter((x) => x.data === last);
-          setKpiSemPsicoPct(calcPctFromYesNo(rowsLast, "nao"));
-          return;
-        } catch {
-          // tenta a próxima aba
-        }
+          if (last) {
+            setKpiSemPsicoPct(calcPctFromYesNo(rj.filter(x => x.data === last), "nao"));
+            return;
+          }
+        } catch {}
       }
-
-      setKpiSemPsicoPct(null);
     };
-
     trySheets();
   }, []);
 
   const KPI_BASE = [
-    {
-      id: "total_acolhidos",
-      label: "Crianças e adolescentes acolhidos",
-      value: null,
-      unit: "",
-    },
-    {
-      id: "total_unidades",
-      label: "Entidades de acolhimento",
-      value: null,
-      unit: "",
-    },
-    {
-      id: "nao_alfabetizados",
-      label: "Não alfabetizados",
-      value: null,
-      unit: "",
-    },
-    {
-      id: "vitimas_violencia",
-      label: "Vítimas de violência",
-      value: null,
-      unit: "",
-    },
-    {
-      id: "sem_psico",
-      label: "Sem acompanhamento psicológico individualizado",
-      value: null,
-      unit: "",
-    },
+    { id: "total_acolhidos", label: "Crianças e adolescentes acolhidos", value: null, unit: "" },
+    { id: "total_unidades", label: "Entidades de acolhimento", value: null, unit: "" },
+    { id: "nao_alfabetizados", label: "Não alfabetizados", value: null, unit: "" },
+    { id: "vitimas_violencia", label: "Vítimas de violência", value: null, unit: "" },
+    { id: "sem_psico", label: "Sem acompanhamento psicológico individualizado", value: null, unit: "" },
   ];
 
   const kpiData = useMemo(() => {
     return KPI_BASE.map((kpi) => {
       if (kpi.id === "total_acolhidos") {
-        return {
-          ...kpi,
-          value: typeof kpiAcolhidos === "number" ? kpiAcolhidos : null,
-          details: kpiAcolhidosDetails,
-        };
+        return { ...kpi, value: kpiAcolhidos, details: kpiAcolhidosDetails };
       }
-
       if (kpi.id === "total_unidades") {
-        return {
-          ...kpi,
-          value: typeof kpiUnidades === "number" ? kpiUnidades : null,
-          details: kpiUnidadesDetails,
-        };
+        return { ...kpi, value: kpiUnidades, details: kpiUnidadesDetails };
       }
-
       if (kpi.id === "nao_alfabetizados") {
-        const pct =
-          typeof kpiNaoAlfabetizadosPct === "number"
-            ? Math.round(kpiNaoAlfabetizadosPct * 10) / 10
-            : null;
-
-        return {
-          ...kpi,
+        const pct = typeof kpiNaoAlfabetizadosPct === "number" ? Math.round(kpiNaoAlfabetizadosPct * 10) / 10 : null;
+        return { 
+          ...kpi, 
           value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
-          details: [
-            "Entre crianças e adolescentes acolhidos que já deveriam estar alfabetizados (8+)",
-          ],
+          details: ["Entre crianças e adolescentes acolhidos que já deveriam estar alfabetizados (8+)"] 
         };
       }
-
       if (kpi.id === "vitimas_violencia") {
-        const pct =
-          typeof kpiVitimasViolenciaPct === "number"
-            ? Math.round(kpiVitimasViolenciaPct * 10) / 10
-            : null;
-
-        return {
-          ...kpi,
-          value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
-          details: [],
-        };
+        const pct = typeof kpiVitimasViolenciaPct === "number" ? Math.round(kpiVitimasViolenciaPct * 10) / 10 : null;
+        return { ...kpi, value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null };
       }
-
       if (kpi.id === "sem_psico") {
-        const pct =
-          typeof kpiSemPsicoPct === "number"
-            ? Math.round(kpiSemPsicoPct * 10) / 10
-            : null;
-
-        return {
-          ...kpi,
-          value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
-          details: [],
-        };
+        const pct = typeof kpiSemPsicoPct === "number" ? Math.round(kpiSemPsicoPct * 10) / 10 : null;
+        return { ...kpi, value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null };
       }
-
       return { ...kpi, value: null };
     });
-  }, [
-    kpiAcolhidos,
-    kpiAcolhidosDetails,
-    kpiAcolhidosChangePct,
-    kpiUnidades,
-    kpiUnidadesDetails,
-    kpiNaoAlfabetizadosPct,
-    kpiVitimasViolenciaPct,
-    kpiSemPsicoPct,
-  ]);
+  }, [kpiAcolhidos, kpiAcolhidosDetails, kpiUnidades, kpiUnidadesDetails, kpiNaoAlfabetizadosPct, kpiVitimasViolenciaPct, kpiSemPsicoPct]);
 
   const hasActiveFilters = Boolean(filters.area || filters.indicador);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <DashboardHeader />
-
       <main className="flex-1 container max-w-7xl mx-auto py-6 space-y-6">
         <section>
-          <h2 className="section-title px-1">
-            Visão Geral do Acolhimento | Estado do Rio de Janeiro
-          </h2>
+          <h2 className="section-title px-1">Visão Geral do Acolhimento | Estado do Rio de Janeiro</h2>
           <KPICards data={kpiData as any} />
         </section>
-
-        <section>
-          <OverviewCharts />
-        </section>
-
+        <section><OverviewCharts /></section>
         <section className="pt-4">
-          {catalogoLoading ? (
-            <div className="text-sm text-muted-foreground">Carregando catálogo...</div>
-          ) : null}
-
-          <FilterSection
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            catalogo={catalogo as any}
-          />
+          {catalogoLoading ? <div className="text-sm text-muted-foreground">Carregando catálogo...</div> : null}
+          <FilterSection filters={filters} onFilterChange={handleFilterChange} catalogo={catalogo as any} />
         </section>
-
         {hasActiveFilters && (
-          <section>
-            <IndicatorResults filters={filters} catalogo={catalogo} />
-          </section>
+          <section><IndicatorResults filters={filters} catalogo={catalogo} /></section>
         )}
-
-        <section className="pt-2">
-          <LastUpdated />
-        </section>
+        <section className="pt-2"><LastUpdated /></section>
       </main>
     </div>
   );
