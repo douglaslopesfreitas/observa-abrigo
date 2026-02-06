@@ -443,7 +443,7 @@ export default function Index() {
       });
   }, []);
 
-  // 4) ✅ KPI (educacao): Lógica corrigida para somar total da aba educacao
+  // 4) KPI (educacao): Lógica corrigida para somar total da aba educacao
   useEffect(() => {
     getIndicadorSheet("educacao")
       .then((d) => {
@@ -753,6 +753,7 @@ export default function Index() {
       <DashboardHeader />
 
       <main className="flex-1 container max-w-7xl mx-auto py-6 space-y-6">
+        {/* 1. Cabeçalho e KPIs (Topo) */}
         <section>
           <h2 className="section-title px-1">
             Visão Geral do Acolhimento | Estado do Rio de Janeiro
@@ -760,7 +761,7 @@ export default function Index() {
           <KPICards data={kpiData as any} />
         </section>
 
-        {/* Explorar Indicadores (Movido para cá) */}
+        {/* 2. Explorar Indicadores (Sempre visível abaixo dos KPIs) */}
         <section className="pt-2">
           {catalogoLoading && (
             <div className="text-sm text-muted-foreground mb-2">Carregando catálogo...</div>
@@ -772,9 +773,12 @@ export default function Index() {
           />
         </section>
 
-        {/* Troca entre Gráficos Gerais e Resultados do Filtro */}
+        {/* 3. Lógica Condicional com Animação Reforçada */}
         {hasActiveFilters ? (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <section 
+            key={filters.indicador || "results"} // ✅ Key força animação ao trocar indicador
+            className="animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-700 ease-out"
+          >
             <IndicatorResults filters={filters} catalogo={catalogo} />
           </section>
         ) : (
