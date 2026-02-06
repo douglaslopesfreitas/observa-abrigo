@@ -4,7 +4,7 @@ import { KPICards } from "@/components/dashboard/KPICards";
 import { OverviewCharts } from "@/components/dashboard/OverviewCharts";
 import { FilterSection } from "@/components/dashboard/FilterSection";
 import type { FilterState } from "@/types/dashboard";
-import { getCatalogo, getIndicadorSheet, getIndicador } from "@/services/sheetsApi";
+import { getCatalogo, getIndicadorSheet } from "@/services/sheetsApi";
 import { IndicatorResults } from "@/components/dashboard/IndicatorResults";
 import { LastUpdated } from "@/components/dashboard/LastUpdated";
 
@@ -308,7 +308,7 @@ export default function Index() {
         order.forEach((mod) => {
           const v = byMod.get(mod);
           if (typeof v === "number" && v > 0) {
-            // ✅ FIX "Em Em": Se o dado já vier com "Em", não duplicamos
+            // ✅ FIX "Em Em": Verificamos se a modalidade já começa com "Em"
             const label = mod.toLowerCase().startsWith("em ") ? mod : `Em ${mod}`;
             lines.push(`${label}: ${v.toLocaleString("pt-BR")}`);
           }
@@ -521,10 +521,9 @@ export default function Index() {
       });
   }, []);
 
-  // 5) ✅ KPI Vítimas de violência: Busca especificamente a tabela do "violencia_s" (G1:L)
+  // 5) KPI Vítimas de violência: % "Sim" / total (aba violencia)
   useEffect(() => {
-    // MUDANÇA: Buscando o intervalo G1:L que é onde está a tabela Sim/Não
-    getIndicador("violencia!G1:L")
+    getIndicadorSheet("violencia")
       .then((d) => {
         const values: any[][] = d.values || [];
         if (values.length < 2) {
@@ -538,10 +537,73 @@ export default function Index() {
         const idxTerr = headersKey.indexOf("territorio");
         const idxData = headersKey.indexOf("data");
         const idxVal = headersKey.indexOf("valor");
+        const idxId = headersKey.indexOf("indicador_id"); // Buscamos a coluna de ID
         const idxCat = findCategoryColumn(headersKey);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
           setKpiVitimasViolenciaPct(null);
+          return;
+        }
+
+        let lastDateAny = "";
+        const parsed: YnRow[] = body.map((r) => {
+          const rawDate = String(r[idxData] ?? "").trim();
+          if (rawDate) lastDateAny = rawDate;
+
+          return {
+            territorio: String(r[idxTerr] ?? "").trim(),
+            data: rawDate || lastDateAny,
+            resposta: String(r[idxCat] ?? "").trim(),
+            valor: parseNumberOrNull(r[idxVal]),
+            indicador_id: idxId >= 0 ? String(r[idxId] ?? "").trim() : undefined
+          };
+        });
+
+        // FILTRO: Apenas RJ e Apenas o indicador "violencia_s"
+        const filteredRows = parsed.filter((x) => 
+          isRJ(x.territorio) && x.indicador_id === "violencia_s"
+        );
+
+        const dates = Array.from(new Set(filteredRows.map((x) => x.data).filter(Boolean))).sort();
+        const last = dates[dates.length - 1];
+
+        if (!last) {
+          setKpiVitimasViolenciaPct(null);
+          return;
+        }
+
+        const rowsLast = filteredRows.filter((x) => x.data === last);
+        setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim"));
+      })
+      .catch(() => setKpiVitimasViolenciaPct(null));
+  }, []);
+
+  // 6) ✅ KPI (Psicologia) - Corrigido para ler especificamente da aba "saude"
+  useEffect(() => {
+    getIndicadorSheet("saude")
+      .then((d) => {
+        const values: any[][] = d.values || [];
+        if (values.length < 2) {
+          setKpiSemPsicoPct(null);
+          return;
+        }
+
+        const headersNorm = (values[0] || []).map(h => normTxt(h));
+        const body = values.slice(1);
+
+        const idxTerr = headersNorm.indexOf("territorio");
+        const idxData = headersNorm.indexOf("data");
+        const idxVal = headersNorm.indexOf("valor");
+        // Busca a coluna de resposta de forma flexível (ex: "atendimento psicologico")
+        let idxCat = -1;
+        const candidates = ["atendimento psicologico", "psicologia", "categoria", "resposta"];
+        for (const c of candidates) {
+          const i = headersNorm.indexOf(normTxt(c));
+          if (i >= 0) { idxCat = i; break; }
+        }
+
+        if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
+          setKpiSemPsicoPct(null);
           return;
         }
 
@@ -563,68 +625,27 @@ export default function Index() {
         const last = dates[dates.length - 1];
 
         if (!last) {
-          setKpiVitimasViolenciaPct(null);
+          setKpiSemPsicoPct(null);
           return;
         }
 
         const rowsLast = rj.filter((x) => x.data === last);
-        // Calcula a porcentagem do "Sim" sobre o total dessa tabela
-        setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim"));
-      })
-      .catch(() => setKpiVitimasViolenciaPct(null));
-  }, []);
+        
+        // Numerador: Valor da linha que contém o termo "Sem"
+        const semRow = rowsLast.find(r => normTxt(r.resposta).includes("sem"));
+        const semValor = semRow && typeof semRow.valor === "number" ? semRow.valor : 0;
 
-  // 6) KPI Sem acompanhamento psicológico individualizado: % "Não" / total
-  useEffect(() => {
-    const trySheets = async () => {
-      const candidates = ["psicologico", "psicologia", "saude"];
-      for (const sheet of candidates) {
-        try {
-          const d = await getIndicadorSheet(sheet);
-          const values: any[][] = d.values || [];
-          if (values.length < 2) continue;
+        // Denominador: Soma total da data (Com + Sem)
+        const total = rowsLast.reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
 
-          const headersKey = (values[0] || []).map(normalizeHeaderKey);
-          const body = values.slice(1);
-
-          const idxTerr = headersKey.indexOf("territorio");
-          const idxData = headersKey.indexOf("data");
-          const idxVal = headersKey.indexOf("valor");
-          const idxCat = findCategoryColumn(headersKey);
-
-          if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) continue;
-
-          let lastDateAny = "";
-          const parsed: YnRow[] = body.map((r) => {
-            const rawDate = String(r[idxData] ?? "").trim();
-            if (rawDate) lastDateAny = rawDate;
-
-            return {
-              territorio: String(r[idxTerr] ?? "").trim(),
-              data: rawDate || lastDateAny,
-              resposta: String(r[idxCat] ?? "").trim(),
-              valor: parseNumberOrNull(r[idxVal]),
-            };
-          });
-
-          const rj = parsed.filter((x) => isRJ(x.territorio));
-          const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
-          const last = dates[dates.length - 1];
-
-          if (!last) continue;
-
-          const rowsLast = rj.filter((x) => x.data === last);
-          setKpiSemPsicoPct(calcPctFromYesNo(rowsLast, "nao"));
-          return;
-        } catch {
-          // tenta a próxima aba
+        if (total > 0) {
+          const pct = (semValor / total) * 100;
+          setKpiSemPsicoPct(Number.isFinite(pct) ? pct : null);
+        } else {
+          setKpiSemPsicoPct(null);
         }
-      }
-
-      setKpiSemPsicoPct(null);
-    };
-
-    trySheets();
+      })
+      .catch(() => setKpiSemPsicoPct(null));
   }, []);
 
   const KPI_BASE = [
