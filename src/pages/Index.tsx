@@ -14,16 +14,16 @@ type CatalogRow = {
   indicador_nome?: string;
   fonte?: string;
   fonte_url?: string;
-  nota_explicativa?: string; // Nova coluna (opcional)
+  nota_explicativa?: string;
   sheet?: string;
   range?: string;
   tipo?: string;
-  perfil?: string; // ✅ Adicionado
+  perfil?: string;
   titulo?: string;
   unidade?: string;
   territorio_col?: string;
-  data_col?: string; // ✅ Adicionado
-  valor_col?: string; // ✅ Adicionado
+  data_col?: string;
+  valor_col?: string;
 };
 
 function parseNumberOrNull(v: unknown): number | null {
@@ -33,7 +33,6 @@ function parseNumberOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-// headers só em minúsculo, sem alterar o texto (compatível com os nomes do catálogo)
 function rowsToCatalog(values: any[][]): CatalogRow[] {
   if (!Array.isArray(values) || values.length < 2) return [];
 
@@ -110,6 +109,23 @@ function shortModalidadeLabel(s: string) {
   return x;
 }
 
+// ===== Alfabetização (não alfabetizados) =====
+type AlfRow = {
+  territorio: string;
+  data: string;
+  categoria: string;
+  valor: number | null;
+};
+
+// normalização simples para comparar “não alfabetizados” sem dor
+function normTxt(s: unknown) {
+  return String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 export default function Index() {
   const [filters, setFilters] = useState<FilterState>({
     area: null,
@@ -123,10 +139,13 @@ export default function Index() {
 
   const [kpiAcolhidos, setKpiAcolhidos] = useState<number | null>(null);
   const [kpiAcolhidosChangePct, setKpiAcolhidosChangePct] = useState<number | null>(null);
-  const [kpiAcolhidosDetails, setKpiAcolhidosDetails] = useState<string[]>([]); // ✅ NOVO
+  const [kpiAcolhidosDetails, setKpiAcolhidosDetails] = useState<string[]>([]);
 
   const [kpiUnidades, setKpiUnidades] = useState<number | null>(null);
   const [kpiUnidadesDetails, setKpiUnidadesDetails] = useState<string[]>([]);
+
+  // ✅ NOVO KPI: não alfabetizados (aba alfabetizacao)
+  const [kpiNaoAlfabetizados, setKpiNaoAlfabetizados] = useState<number | null>(null);
 
   const handleFilterChange = useCallback((newFilters: FilterState) => {
     setFilters(newFilters);
@@ -149,7 +168,7 @@ export default function Index() {
     loadCatalogo();
   }, []);
 
-  // 2) KPI (acolhidos): total do RJ no último período + variação % vs período anterior + breakdown por modalidade
+  // 2) KPI (acolhidos): total RJ + variação + breakdown por modalidade
   useEffect(() => {
     getIndicadorSheet("acolhidos")
       .then((d) => {
@@ -207,8 +226,8 @@ export default function Index() {
 
         // Breakdown por modalidade no último período
         const rowsLast = rj.filter((x) => x.data === last);
-
         const byMod = new Map<string, number>();
+
         rowsLast.forEach((r) => {
           const mod = (r.modalidade || "").trim();
           if (!mod) return;
@@ -246,7 +265,7 @@ export default function Index() {
 
         setKpiAcolhidosDetails(lines);
 
-        // Variação percentual (mantido)
+        // Variação percentual
         if (prev) {
           const prevTotal = computeTotalForDate(rj, prev);
           if (prevTotal > 0) {
@@ -266,7 +285,7 @@ export default function Index() {
       });
   }, []);
 
-  // 3) KPI (abrigos): total de entidades do RJ no último período + breakdown por modalidade
+  // 3) KPI (abrigos): total RJ + breakdown por modalidade
   useEffect(() => {
     getIndicadorSheet("abrigos")
       .then((d) => {
@@ -363,6 +382,86 @@ export default function Index() {
       });
   }, []);
 
+  // ✅ 4) KPI (alfabetizacao): pega “não alfabetizados” do RJ no último período
+  useEffect(() => {
+    getIndicadorSheet("alfabetizacao")
+      .then((d) => {
+        const values: any[][] = d.values || [];
+        if (values.length < 2) {
+          setKpiNaoAlfabetizados(null);
+          return;
+        }
+
+        const headers = values[0].map((x) => String(x ?? "").trim().toLowerCase());
+        const body = values.slice(1);
+
+        const idxTerritorio = headers.indexOf("territorio");
+        const idxData = headers.indexOf("data");
+        const idxValor = headers.indexOf("valor");
+
+        // categoria pode vir como "categoria" ou algo equivalente
+        let idxCategoria = headers.indexOf("categoria");
+        if (idxCategoria < 0) {
+          // tenta "alfabetizacao" (caso sua planilha use isso como coluna)
+          idxCategoria = headers.indexOf("alfabetizacao");
+        }
+
+        if (idxTerritorio < 0 || idxData < 0 || idxValor < 0 || idxCategoria < 0) {
+          setKpiNaoAlfabetizados(null);
+          return;
+        }
+
+        let lastDateAny = "";
+        const parsed: AlfRow[] = body.map((r) => {
+          const rawDate = String(r[idxData] ?? "").trim();
+          if (rawDate) lastDateAny = rawDate;
+
+          return {
+            territorio: String(r[idxTerritorio] ?? "").trim(),
+            data: rawDate || lastDateAny,
+            categoria: String(r[idxCategoria] ?? "").trim(),
+            valor: parseNumberOrNull(r[idxValor]),
+          };
+        });
+
+        const rj = parsed.filter((x) => x.territorio === "RJ");
+        const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
+        const last = dates[dates.length - 1];
+
+        if (!last) {
+          setKpiNaoAlfabetizados(null);
+          return;
+        }
+
+        const rowsLast = rj.filter((x) => x.data === last);
+
+        // tenta achar explicitamente “não alfabetizado(s)”
+        const alvo = rowsLast.find((r) => {
+          const c = normTxt(r.categoria);
+          return (
+            c.includes("nao") &&
+            c.includes("alfabet")
+          );
+        });
+
+        if (alvo && typeof alvo.valor === "number") {
+          setKpiNaoAlfabetizados(alvo.valor);
+          return;
+        }
+
+        // fallback: se não achou, pega o MAIOR valor do último período (evita ficar vazio)
+        const maxV = rowsLast.reduce((acc, r) => {
+          const v = typeof r.valor === "number" ? r.valor : 0;
+          return v > acc ? v : acc;
+        }, 0);
+
+        setKpiNaoAlfabetizados(maxV > 0 ? maxV : null);
+      })
+      .catch(() => {
+        setKpiNaoAlfabetizados(null);
+      });
+  }, []);
+
   const KPI_BASE = [
     {
       id: "total_acolhidos",
@@ -377,10 +476,11 @@ export default function Index() {
       unit: "",
     },
     {
-      id: "frequencia_escolar",
-      label: "Frequência escolar",
+      // ✅ TROCA AQUI (antes era frequência escolar)
+      id: "nao_alfabetizados",
+      label: "Não alfabetizados",
       value: null,
-      unit: "%",
+      unit: "",
     },
     {
       id: "tempo_medio",
@@ -413,9 +513,23 @@ export default function Index() {
         };
       }
 
+      if (kpi.id === "nao_alfabetizados") {
+        return {
+          ...kpi,
+          value: typeof kpiNaoAlfabetizados === "number" ? kpiNaoAlfabetizados : null,
+        };
+      }
+
       return { ...kpi, value: null };
     });
-  }, [kpiAcolhidos, kpiAcolhidosDetails, kpiAcolhidosChangePct, kpiUnidades, kpiUnidadesDetails]);
+  }, [
+    kpiAcolhidos,
+    kpiAcolhidosDetails,
+    kpiAcolhidosChangePct,
+    kpiUnidades,
+    kpiUnidadesDetails,
+    kpiNaoAlfabetizados,
+  ]);
 
   const hasActiveFilters = Boolean(filters.area || filters.indicador);
 
