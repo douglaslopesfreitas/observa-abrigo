@@ -72,12 +72,12 @@ function isFonteRedeAbrigo(fonte: unknown) {
   return f.includes("instituto rede abrigo") || f.includes("rede abrigo");
 }
 
-// ✅ Se a coluna fonte não existir ou estiver vazia, NÃO filtra (pra não zerar os gráficos)
+// ✅ se a coluna fonte não existir OU vier vazia, não filtra
 function shouldKeepByFonte(fonte: unknown, hasFonteColumn: boolean) {
   if (!hasFonteColumn) return true;
-  const f = String(fonte ?? "").trim();
-  if (!f) return true; // se veio vazio, não filtra
-  return isFonteRedeAbrigo(f);
+  const fRaw = String(fonte ?? "").trim();
+  if (!fRaw) return true;
+  return isFonteRedeAbrigo(fRaw);
 }
 
 function formatDateBR(input: unknown) {
@@ -115,7 +115,20 @@ function detectCategoryIndex(headersNorm: string[], candidates: string[]) {
   return -1;
 }
 
+// ✅ fallback: se não achar categoria pelo nome, pega a primeira coluna que não seja territorio/data/valor/fonte
+function detectCategoryFallback(headersNorm: string[]) {
+  const blocked = new Set(["territorio", "data", "valor", "fonte"]);
+  for (let i = 0; i < headersNorm.length; i++) {
+    const h = headersNorm[i];
+    if (!h) continue;
+    if (blocked.has(h)) continue;
+    return i;
+  }
+  return -1;
+}
+
 function computeTotalForDate(rows: RowParsed[], date: string): number {
+  // tenta achar total por texto
   const totalRow = rows.find((r) => {
     const c = normTxt(r.categoria);
     return r.data === date && (c.includes("todos") || c.includes("em todos") || c === "total");
@@ -152,15 +165,15 @@ export function OverviewCharts() {
 
         let idxCat = headersNorm.indexOf("categoria");
         if (idxCat < 0) idxCat = headersNorm.indexOf("modalidade");
+        if (idxCat < 0) idxCat = detectCategoryFallback(headersNorm);
 
         const idxFonte = headersNorm.indexOf("fonte");
+        const hasFonteColumn = idxFonte >= 0;
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
           setEvolutionData([]);
           return;
         }
-
-        const hasFonteColumn = idxFonte >= 0;
 
         let lastDateAny = "";
         const parsed: RowParsed[] = body.map((r) => {
@@ -188,7 +201,7 @@ export function OverviewCharts() {
       .catch(() => setEvolutionData([]));
   }, []);
 
-  // ===== Faixa etária (aba faixa-etaria) =====
+  // ===== Faixa etária (aba faixa-etaria) em PERCENTUAL =====
   useEffect(() => {
     getIndicadorSheet("faixa-etaria")
       .then((d) => {
@@ -205,8 +218,9 @@ export function OverviewCharts() {
         const idxData = headersNorm.indexOf("data");
         const idxVal = headersNorm.indexOf("valor");
         const idxFonte = headersNorm.indexOf("fonte");
+        const hasFonteColumn = idxFonte >= 0;
 
-        const idxCat = detectCategoryIndex(headersNorm, [
+        let idxCat = detectCategoryIndex(headersNorm, [
           "categoria",
           "faixa_etaria",
           "faixa etaria",
@@ -215,13 +229,12 @@ export function OverviewCharts() {
           "idade",
           "faixa",
         ]);
+        if (idxCat < 0) idxCat = detectCategoryFallback(headersNorm);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
           setAgeData([]);
           return;
         }
-
-        const hasFonteColumn = idxFonte >= 0;
 
         let lastDateAny = "";
         const parsed: RowParsed[] = body.map((r) => {
@@ -243,17 +256,28 @@ export function OverviewCharts() {
 
         const dates = Array.from(new Set(filtered.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
-
         if (!last) {
           setAgeData([]);
           return;
         }
 
-        const rowsLast = filtered.filter((r) => r.data === last);
+        const rowsLast = filtered
+          .filter((r) => r.data === last)
+          .filter((r) => r.categoria && typeof r.valor === "number" && (r.valor as number) > 0);
 
+        const total = rowsLast.reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
+        if (!total || total <= 0) {
+          setAgeData([]);
+          return;
+        }
+
+        // ✅ vira percentual
         const mapped = rowsLast
-          .filter((r) => r.categoria && typeof r.valor === "number" && r.valor > 0)
-          .map((r) => ({ name: r.categoria, value: r.valor as number }));
+          .map((r) => ({
+            name: r.categoria,
+            value: ((r.valor as number) / total) * 100,
+          }))
+          .sort((a, b) => b.value - a.value);
 
         setAgeData(mapped);
       })
@@ -277,15 +301,15 @@ export function OverviewCharts() {
         const idxData = headersNorm.indexOf("data");
         const idxVal = headersNorm.indexOf("valor");
         const idxFonte = headersNorm.indexOf("fonte");
+        const hasFonteColumn = idxFonte >= 0;
 
-        const idxCat = detectCategoryIndex(headersNorm, ["raca", "raça", "categoria"]);
+        let idxCat = detectCategoryIndex(headersNorm, ["raca", "raça", "categoria"]);
+        if (idxCat < 0) idxCat = detectCategoryFallback(headersNorm);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
           setRacaData([]);
           return;
         }
-
-        const hasFonteColumn = idxFonte >= 0;
 
         let lastDateAny = "";
         const parsed: RowParsed[] = body.map((r) => {
@@ -307,7 +331,6 @@ export function OverviewCharts() {
 
         const dates = Array.from(new Set(filtered.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
-
         if (!last) {
           setRacaData([]);
           return;
@@ -342,8 +365,9 @@ export function OverviewCharts() {
         const idxData = headersNorm.indexOf("data");
         const idxVal = headersNorm.indexOf("valor");
         const idxFonte = headersNorm.indexOf("fonte");
+        const hasFonteColumn = idxFonte >= 0;
 
-        const idxCat = detectCategoryIndex(headersNorm, [
+        let idxCat = detectCategoryIndex(headersNorm, [
           "categoria",
           "necessidade",
           "necessidades",
@@ -353,13 +377,12 @@ export function OverviewCharts() {
           "doação",
           "item",
         ]);
+        if (idxCat < 0) idxCat = detectCategoryFallback(headersNorm);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
           setNeedsData([]);
           return;
         }
-
-        const hasFonteColumn = idxFonte >= 0;
 
         let lastDateAny = "";
         const parsed: RowParsed[] = body.map((r) => {
@@ -381,7 +404,6 @@ export function OverviewCharts() {
 
         const dates = Array.from(new Set(filtered.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
-
         if (!last) {
           setNeedsData([]);
           return;
@@ -450,7 +472,7 @@ export function OverviewCharts() {
         </div>
       )}
 
-      {/* Faixa etária */}
+      {/* Faixa etária (PERCENTUAL) */}
       {ageData.length === 0 ? (
         <EmptyState title="Distribuição por Faixa Etária" />
       ) : (
@@ -462,9 +484,10 @@ export function OverviewCharts() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   type="number"
+                  domain={[0, 100]}
                   tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                   axisLine={{ stroke: "hsl(var(--border))" }}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v) => `${Number(v).toFixed(0)}%`}
                 />
                 <YAxis
                   type="category"
@@ -479,7 +502,7 @@ export function OverviewCharts() {
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "8px",
                   }}
-                  formatter={(value: number) => [value.toLocaleString("pt-BR"), "Acolhidos"]}
+                  formatter={(value: number) => [`${value.toFixed(1).replace(".", ",")}%`, "Percentual"]}
                 />
                 <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[0, 4, 4, 0]} />
               </BarChart>
