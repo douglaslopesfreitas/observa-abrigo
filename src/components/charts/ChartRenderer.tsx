@@ -19,22 +19,22 @@ import type { PerfilVisualizacao } from "@/types/dashboard";
 const CHART_COLORS = [
   "#2674a0",
   "#E67310",
+  "#72C0F8",
   "#FFCE19",
+  "#175070",
+  "#FA841E",
+  "#C9E3FC",
   "#FFB114",
   "#0A2E43",
-  "#72C0F8",
-  "#175070",
-  "#C9E3FC",
-  "#f7efba",
   "#9F5125",
-  "#FA841E",
+  "#f7efba",
   "#02121E",
 ];
 
 const PRIMARY_COLOR = "#359AD4";
 
 interface ChartRendererProps {
-  perfil?: PerfilVisualizacao | "linha" | "barras_agrupadas";
+  perfil?: PerfilVisualizacao | "linha" | "barras_agrupadas" | "barras_horizontais_percentual";
   data: any[];
   keys?: string[];
   unidade?: string;
@@ -117,7 +117,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 1. Evolução Quantitativa (LINHA) - COM ANIMAÇÃO
+  // ✅ 1. Evolução Quantitativa (LINHA)
   if (perfil === "linha") {
     return (
       <div className="h-80 w-full">
@@ -145,7 +145,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 2. Evolução de Distribuição (BARRAS AGRUPADAS) - COM ANIMAÇÃO
+  // ✅ 2. Evolução de Distribuição (BARRAS AGRUPADAS)
   if (perfil === "barras_agrupadas") {
     return (
       <div className="h-80 w-full">
@@ -188,7 +188,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 3. PERFIL PADRÃO (Barras quantitativas) - COM ANIMAÇÃO
+  // ✅ 3. PERFIL PADRÃO (Barras verticais quantitativas)
   if (perfil === "padrao") {
     return (
       <div className="flex flex-col w-full">
@@ -240,7 +240,33 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 4. PERFIL PIZZA/DONUT - COM ANIMAÇÃO
+  // ✅ 4. PERFIL BARRAS HORIZONTAIS PERCENTUAIS (Novo perfil para doações/outros)
+  if (perfil === "barras_horizontais_percentual") {
+    return (
+      <div className="h-[500px] w-full mt-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} layout="vertical" margin={{ left: 40, right: 60 }}>
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
+            <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 12 }} />
+            <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 11 }} interval={0} />
+            <Tooltip content={<SimpleTooltip unidade="%" />} cursor={{ fill: "hsl(var(--accent))", opacity: 0.1 }} />
+            <Bar 
+              dataKey="value" 
+              isAnimationActive={true} 
+              animationDuration={1500} 
+              radius={[0, 4, 4, 0]} // ✅ Arredonda apenas a ponta direita
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  // ✅ 5. PERFIL PIZZA
   if (perfil === "pizza") {
     return (
       <div className="h-80 w-full">

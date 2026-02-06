@@ -376,27 +376,18 @@ export function IndicatorResults({
     return Array.from(set);
   }, [filtered]);
 
-  // ===== Fotografia atual =====
+  // ===== Fotografia atual (Lógica de Denominador Dinâmico pela linha Total) =====
   const fotografiaAtual = useMemo(() => {
     if (!lastDate) return null;
 
+    // Localiza a linha de Total para servir como divisor
     const totalRow = filtered.find(
       (r) => r.data === lastDate && r.categoria === TOTAL_LABEL
     );
+    const denominatorValue = totalRow && typeof totalRow.valor === "number" ? totalRow.valor : null;
 
-    const total =
-      totalRow && typeof totalRow.valor === "number"
-        ? totalRow.valor
-        : sumVals(
-            filtered
-              .filter(
-                (r) =>
-                  r.data === lastDate &&
-                  r.categoria &&
-                  r.categoria !== TOTAL_LABEL
-              )
-              .map((r) => r.valor)
-          );
+    // Define se o perfil atual exige cálculo de porcentagem sobre o total
+    const isHorizontalPct = meta?.perfil === "barras_horizontais_percentual";
 
     const byMod = new Map<string, number>();
     filtered
@@ -410,15 +401,22 @@ export function IndicatorResults({
 
     const fotoData = Array.from(byMod.entries())
       .filter(([, v]) => v > 0)
-      .map(([name, value]) => ({ name, value }))
+      .map(([name, value]) => {
+        // Se o perfil for percentual e tivermos um divisor válido, calcula %
+        const finalValue = (isHorizontalPct && denominatorValue && denominatorValue > 0)
+          ? (value / denominatorValue) * 100
+          : value;
+
+        return { name, value: finalValue };
+      })
       .sort((a, b) => b.value - a.value);
 
     return {
       data: lastDate,
-      total,
+      total: denominatorValue,
       fotoData,
     };
-  }, [filtered, lastDate]);
+  }, [filtered, lastDate, meta?.perfil]);
 
   // ===== Evolução =====
   const lineData = useMemo(() => {
@@ -549,7 +547,7 @@ export function IndicatorResults({
               key={`foto-${filters.indicador}`}
               perfil={meta?.perfil || "padrao"}
               data={fotografiaAtual?.fotoData || []}
-              unidade={meta?.unidade}
+              unidade={meta?.perfil === "barras_horizontais_percentual" ? "%" : meta?.unidade}
               formatDateBR={formatDateBR}
               showBanner={meta?.perfil === "padrao"}
               totalValue={fotografiaAtual?.total}
