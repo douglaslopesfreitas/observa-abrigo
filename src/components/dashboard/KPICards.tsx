@@ -54,7 +54,7 @@ export function KPICards({ data }: { data: KPI[] }) {
                 {Array.isArray(kpi.details) && kpi.details.length > 0 ? (
                   <div className={cn("mt-2 space-y-1", isPrimary ? "text-white/85" : "text-muted-foreground")}>
                     {kpi.details.map((d, i) => (
-                      <div key={i} className="text-10x leading-snug">
+                      <div key={i} className="text-5x leading-snug">
                         {d}
                       </div>
                     ))}
