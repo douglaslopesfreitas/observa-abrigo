@@ -43,7 +43,7 @@ interface ChartRendererProps {
   totalValue?: number;
 }
 
-// ✅ Tooltip ajustado para exibir 1 casa decimal em porcentagens
+// ✅ Tooltip customizado para gráficos simples (linha e barras padrão)
 function SimpleTooltip({
   active,
   payload,
@@ -92,7 +92,7 @@ function SimpleTooltip({
         }}
       >
         {typeof value === "number"
-          ? value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+          ? value.toLocaleString("pt-BR")
           : value}
         {unidade ? ` ${unidade}` : ""}
       </div>
@@ -117,7 +117,7 @@ export function ChartRenderer({
     );
   }
 
-  // 1. LINHA
+  // ✅ 1. Evolução Quantitativa (LINHA)
   if (perfil === "linha") {
     return (
       <div className="h-80 w-full">
@@ -145,7 +145,7 @@ export function ChartRenderer({
     );
   }
 
-  // 2. BARRAS AGRUPADAS
+  // ✅ 2. Evolução de Distribuição (BARRAS AGRUPADAS)
   if (perfil === "barras_agrupadas") {
     return (
       <div className="h-80 w-full">
@@ -188,7 +188,7 @@ export function ChartRenderer({
     );
   }
 
-  // 3. PERFIL PADRÃO (Barras verticais)
+  // ✅ 3. PERFIL PADRÃO (Barras verticais quantitativas)
   if (perfil === "padrao") {
     return (
       <div className="flex flex-col w-full">
@@ -214,6 +214,8 @@ export function ChartRenderer({
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", dy: 10 }}
                 axisLine={{ stroke: "hsl(var(--border))" }}
                 interval={0}
+                angle={0}
+                textAnchor="middle"
                 height={60}
               />
               <YAxis
@@ -238,7 +240,7 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 4. PERFIL BARRAS HORIZONTAIS PERCENTUAIS
+  // ✅ 4. PERFIL BARRAS HORIZONTAIS PERCENTUAIS (Novo perfil para doações/outros)
   if (perfil === "barras_horizontais_percentual") {
     return (
       <div className="h-[500px] w-full mt-4">
@@ -252,7 +254,7 @@ export function ChartRenderer({
               dataKey="value" 
               isAnimationActive={true} 
               animationDuration={1500} 
-              radius={[0, 4, 4, 0]} 
+              radius={[0, 4, 4, 0]} // ✅ Arredonda apenas a ponta direita
             >
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -264,7 +266,7 @@ export function ChartRenderer({
     );
   }
 
-  // 5. PIZZA
+  // ✅ 5. PERFIL PIZZA
   if (perfil === "pizza") {
     return (
       <div className="h-80 w-full">
