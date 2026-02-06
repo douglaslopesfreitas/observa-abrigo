@@ -33,28 +33,19 @@ function parseNumberOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function normalizeHeader(h: any): string {
-  return String(h ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove acentos
-    .replace(/\s+/g, "_") // espaços viram _
-    .replace(/[^\w]/g, "_") // qualquer resto vira _
-    .replace(/_+/g, "_") // colapsa __
-    .replace(/^_+|_+$/g, ""); // remove _ no começo/fim
-}
-
+// Versão "como era antes": headers só em minúsculo.
+// Isso evita quebrar indicadores que dependem exatamente dos nomes de coluna do catálogo.
 function rowsToCatalog(values: any[][]): CatalogRow[] {
   if (!Array.isArray(values) || values.length < 2) return [];
 
-  const headers = values[0].map(normalizeHeader);
+  const headers = values[0].map((h) => String(h ?? "").trim().toLowerCase());
   const body = values.slice(1);
 
   return body.map((r) => {
     const obj: any = {};
     headers.forEach((headerName, index) => {
-      if (headerName) obj[headerName] = String(r[index] ?? "").trim();
+      if (!headerName) return;
+      obj[headerName] = String(r?.[index] ?? "").trim();
     });
     return obj as CatalogRow;
   });
@@ -188,56 +179,57 @@ export default function Index() {
         setKpiAcolhidosChangePct(null);
       });
   }, []);
-const KPI_BASE = [
-  {
-    id: "total_acolhidos",
-    label: "Crianças e adolescentes acolhidos",
-    value: null,
-    unit: "",
-  },
-  {
-    id: "evolucao_acolhidos",
-    label: "Evolução do acolhimento",
-    value: null,
-    unit: "",
-  },
-  {
-    id: "frequencia_escolar",
-    label: "Frequência escolar",
-    value: null,
-    unit: "%",
-  },
-  {
-    id: "tempo_medio",
-    label: "Tempo médio de acolhimento",
-    value: null,
-    unit: "anos",
-  },
-];
- const kpiData = useMemo(() => {
-  return KPI_BASE.map((kpi) => {
-    if (kpi.id === "total_acolhidos") {
-      return {
-        ...kpi,
-        value: typeof kpiAcolhidos === "number" ? kpiAcolhidos : null,
-      };
-    }
 
-    if (kpi.id === "evolucao_acolhidos") {
-      if (typeof kpiAcolhidosChangePct === "number") {
-        const sign = kpiAcolhidosChangePct > 0 ? "+" : "";
+  const KPI_BASE = [
+    {
+      id: "total_acolhidos",
+      label: "Crianças e adolescentes acolhidos",
+      value: null,
+      unit: "",
+    },
+    {
+      id: "evolucao_acolhidos",
+      label: "Evolução do acolhimento",
+      value: null,
+      unit: "",
+    },
+    {
+      id: "frequencia_escolar",
+      label: "Frequência escolar",
+      value: null,
+      unit: "%",
+    },
+    {
+      id: "tempo_medio",
+      label: "Tempo médio de acolhimento",
+      value: null,
+      unit: "anos",
+    },
+  ];
+
+  const kpiData = useMemo(() => {
+    return KPI_BASE.map((kpi) => {
+      if (kpi.id === "total_acolhidos") {
         return {
           ...kpi,
-          value: `${sign}${kpiAcolhidosChangePct.toFixed(1)}%`,
+          value: typeof kpiAcolhidos === "number" ? kpiAcolhidos : null,
         };
       }
-      return { ...kpi, value: null };
-    }
 
-    // qualquer KPI que ainda não tem dado real
-    return { ...kpi, value: null };
-  });
-}, [kpiAcolhidos, kpiAcolhidosChangePct]);
+      if (kpi.id === "evolucao_acolhidos") {
+        if (typeof kpiAcolhidosChangePct === "number") {
+          const sign = kpiAcolhidosChangePct > 0 ? "+" : "";
+          return {
+            ...kpi,
+            value: `${sign}${kpiAcolhidosChangePct.toFixed(1)}%`,
+          };
+        }
+        return { ...kpi, value: null };
+      }
+
+      return { ...kpi, value: null };
+    });
+  }, [kpiAcolhidos, kpiAcolhidosChangePct]);
 
   const hasActiveFilters = Boolean(filters.area || filters.indicador);
 
@@ -273,7 +265,6 @@ const KPI_BASE = [
           </section>
         )}
 
-        {/* ✅ FINAL DA PÁGINA (não é footer) */}
         <section className="pt-2">
           <LastUpdated />
         </section>
