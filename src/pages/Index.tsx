@@ -33,8 +33,7 @@ function parseNumberOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-// Versão "como era antes": headers só em minúsculo.
-// Isso evita quebrar indicadores que dependem exatamente dos nomes de coluna do catálogo.
+// headers só em minúsculo, sem alterar o texto (compatível com os nomes do catálogo)
 function rowsToCatalog(values: any[][]): CatalogRow[] {
   if (!Array.isArray(values) || values.length < 2) return [];
 
@@ -82,7 +81,6 @@ type AbrigosRow = {
 };
 
 function computeTotalAbrigosForDate(rows: AbrigosRow[], date: string): number {
-  // No sheet "abrigos" o total costuma ser "Todos os acolhimentos"
   const totalRow =
     rows.find((r) => r.data === date && r.modalidade === "Todos os acolhimentos") ||
     rows.find((r) => r.data === date && r.modalidade === "Em todos os acolhimentos");
@@ -125,8 +123,8 @@ export default function Index() {
 
   const [kpiAcolhidos, setKpiAcolhidos] = useState<number | null>(null);
   const [kpiAcolhidosChangePct, setKpiAcolhidosChangePct] = useState<number | null>(null);
+  const [kpiAcolhidosDetails, setKpiAcolhidosDetails] = useState<string[]>([]); // ✅ NOVO
 
-  // ✅ NOVO KPI: entidades de acolhimento (aba "abrigos")
   const [kpiUnidades, setKpiUnidades] = useState<number | null>(null);
   const [kpiUnidadesDetails, setKpiUnidadesDetails] = useState<string[]>([]);
 
@@ -151,7 +149,7 @@ export default function Index() {
     loadCatalogo();
   }, []);
 
-  // 2) KPI automático (acolhidos): total do RJ no último período + variação % vs período anterior
+  // 2) KPI (acolhidos): total do RJ no último período + variação % vs período anterior + breakdown por modalidade
   useEffect(() => {
     getIndicadorSheet("acolhidos")
       .then((d) => {
@@ -159,6 +157,7 @@ export default function Index() {
         if (values.length < 2) {
           setKpiAcolhidos(null);
           setKpiAcolhidosChangePct(null);
+          setKpiAcolhidosDetails([]);
           return;
         }
 
@@ -173,6 +172,7 @@ export default function Index() {
         if (idxTerritorio < 0 || idxData < 0 || idxModalidade < 0 || idxValor < 0) {
           setKpiAcolhidos(null);
           setKpiAcolhidosChangePct(null);
+          setKpiAcolhidosDetails([]);
           return;
         }
 
@@ -198,12 +198,55 @@ export default function Index() {
         if (!last) {
           setKpiAcolhidos(null);
           setKpiAcolhidosChangePct(null);
+          setKpiAcolhidosDetails([]);
           return;
         }
 
         const lastTotal = computeTotalForDate(rj, last);
         setKpiAcolhidos(Number.isFinite(lastTotal) ? lastTotal : null);
 
+        // Breakdown por modalidade no último período
+        const rowsLast = rj.filter((x) => x.data === last);
+
+        const byMod = new Map<string, number>();
+        rowsLast.forEach((r) => {
+          const mod = (r.modalidade || "").trim();
+          if (!mod) return;
+          if (mod === "Em todos os acolhimentos") return;
+
+          const v = typeof r.valor === "number" ? r.valor : 0;
+          if (!Number.isFinite(v) || v <= 0) return;
+
+          byMod.set(mod, (byMod.get(mod) || 0) + v);
+        });
+
+        const order = [
+          "Acolhimento Institucional",
+          "Famílias Acolhedoras",
+          "Casa-Lar",
+          "Acolhimento Especializado em Dependentes Químicos",
+          "Acolhimentos de Segunda à Sexta",
+          "Acolhimento para Aluno Residente",
+        ];
+
+        const lines: string[] = [];
+        order.forEach((mod) => {
+          const v = byMod.get(mod);
+          if (typeof v === "number" && v > 0) {
+            lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
+          }
+        });
+
+        Array.from(byMod.entries())
+          .filter(([mod]) => !order.includes(mod))
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([mod, v]) => {
+            if (v > 0) lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
+          });
+
+        setKpiAcolhidosDetails(lines);
+
+        // Variação percentual (mantido)
         if (prev) {
           const prevTotal = computeTotalForDate(rj, prev);
           if (prevTotal > 0) {
@@ -219,10 +262,11 @@ export default function Index() {
       .catch(() => {
         setKpiAcolhidos(null);
         setKpiAcolhidosChangePct(null);
+        setKpiAcolhidosDetails([]);
       });
   }, []);
 
-  // ✅ 3) KPI automático (abrigos): total de entidades do RJ no último período + breakdown por modalidade
+  // 3) KPI (abrigos): total de entidades do RJ no último período + breakdown por modalidade
   useEffect(() => {
     getIndicadorSheet("abrigos")
       .then((d) => {
@@ -273,7 +317,6 @@ export default function Index() {
         const lastTotal = computeTotalAbrigosForDate(rj, last);
         setKpiUnidades(Number.isFinite(lastTotal) ? lastTotal : null);
 
-        // Breakdown no último período
         const rowsLast = rj.filter((x) => x.data === last);
 
         const order = [
@@ -286,7 +329,6 @@ export default function Index() {
         ];
 
         const byMod = new Map<string, number>();
-
         rowsLast.forEach((r) => {
           const mod = (r.modalidade || "").trim();
           if (!mod) return;
@@ -299,8 +341,6 @@ export default function Index() {
         });
 
         const lines: string[] = [];
-
-        // Primeiro os que estão no order
         order.forEach((mod) => {
           const v = byMod.get(mod);
           if (typeof v === "number" && v > 0) {
@@ -308,7 +348,6 @@ export default function Index() {
           }
         });
 
-        // Depois qualquer modalidade extra que aparecer
         Array.from(byMod.entries())
           .filter(([mod]) => !order.includes(mod))
           .sort((a, b) => b[1] - a[1])
@@ -332,7 +371,6 @@ export default function Index() {
       unit: "",
     },
     {
-      // ✅ TROCA AQUI
       id: "total_unidades",
       label: "Entidades de acolhimento",
       value: null,
@@ -358,6 +396,12 @@ export default function Index() {
         return {
           ...kpi,
           value: typeof kpiAcolhidos === "number" ? kpiAcolhidos : null,
+          details: kpiAcolhidosDetails,
+          change:
+            typeof kpiAcolhidosChangePct === "number"
+              ? Math.round(kpiAcolhidosChangePct * 10) / 10
+              : undefined,
+          changeLabel: kpiAcolhidosChangePct != null ? "vs período anterior" : undefined,
         };
       }
 
@@ -369,10 +413,9 @@ export default function Index() {
         };
       }
 
-      // Mantém os outros como null por enquanto
       return { ...kpi, value: null };
     });
-  }, [kpiAcolhidos, kpiUnidades, kpiUnidadesDetails]);
+  }, [kpiAcolhidos, kpiAcolhidosDetails, kpiAcolhidosChangePct, kpiUnidades, kpiUnidadesDetails]);
 
   const hasActiveFilters = Boolean(filters.area || filters.indicador);
 
@@ -382,7 +425,9 @@ export default function Index() {
 
       <main className="flex-1 container max-w-7xl mx-auto py-6 space-y-6">
         <section>
-          <h2 className="section-title px-1">Visão Geral do Acolhimento</h2>
+          <h2 className="section-title px-1">
+            Visão Geral do Acolhimento | Estado do Rio de Janeiro
+          </h2>
           <KPICards data={kpiData as any} />
         </section>
 
