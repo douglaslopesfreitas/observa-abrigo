@@ -34,6 +34,9 @@ const CHART_COLORS = [
   "#FFE045",
 ];
 
+// ✅ total fixo para % em doações/maiores necessidades
+const NEEDS_TOTAL = 129;
+
 function EmptyState({ title }: { title: string }) {
   return (
     <div className="chart-container">
@@ -128,7 +131,6 @@ function detectCategoryFallback(headersNorm: string[]) {
 }
 
 function computeTotalForDate(rows: RowParsed[], date: string): number {
-  // tenta achar total por texto
   const totalRow = rows.find((r) => {
     const c = normTxt(r.categoria);
     return r.data === date && (c.includes("todos") || c.includes("em todos") || c === "total");
@@ -271,7 +273,6 @@ export function OverviewCharts() {
           return;
         }
 
-        // ✅ vira percentual
         const mapped = rowsLast
           .map((r) => ({
             name: r.categoria,
@@ -348,7 +349,7 @@ export function OverviewCharts() {
       .catch(() => setRacaData([]));
   }, []);
 
-  // ===== Doações / maiores necessidades (aba doacao) =====
+  // ===== Doações / maiores necessidades (aba doacao) em PERCENTUAL com total fixo 129 =====
   useEffect(() => {
     getIndicadorSheet("doacao")
       .then((d) => {
@@ -409,11 +410,22 @@ export function OverviewCharts() {
           return;
         }
 
-        const rowsLast = filtered.filter((r) => r.data === last);
+        const rowsLast = filtered
+          .filter((r) => r.data === last)
+          .filter((r) => r.categoria && typeof r.valor === "number" && r.valor > 0);
 
+        if (NEEDS_TOTAL <= 0) {
+          setNeedsData([]);
+          return;
+        }
+
+        // ✅ percentual pelo total fixo 129
         const mapped = rowsLast
-          .filter((r) => r.categoria && typeof r.valor === "number" && r.valor > 0)
-          .map((r) => ({ name: r.categoria, value: r.valor as number }))
+          .map((r) => ({
+            name: r.categoria,
+            value: ((r.valor as number) / NEEDS_TOTAL) * 100,
+          }))
+          .filter((x) => Number.isFinite(x.value) && x.value > 0)
           .sort((a, b) => b.value - a.value);
 
         setNeedsData(mapped);
@@ -549,7 +561,7 @@ export function OverviewCharts() {
         </div>
       )}
 
-      {/* Doações / maiores necessidades */}
+      {/* Doações / maiores necessidades (BARRA + % com total fixo 129) */}
       {needsData.length === 0 ? (
         <EmptyState title="Doações e maiores necessidades" />
       ) : (
@@ -557,32 +569,37 @@ export function OverviewCharts() {
           <h3 className="section-title">Doações e maiores necessidades</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={needsData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={3}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                  labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
-                >
-                  {needsData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
+              <BarChart data={needsData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  type="number"
+                  domain={[0, 100]}
+                  tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={{ stroke: "hsl(var(--border))" }}
+                  tickFormatter={(v) => `${Number(v).toFixed(0)}%`}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={{ stroke: "hsl(var(--border))" }}
+                  width={120}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "8px",
                   }}
-                  formatter={(value: number) => [value.toLocaleString("pt-BR"), "Ocorrências"]}
+                  formatter={(value: number) => [`${value.toFixed(1).replace(".", ",")}%`, "Percentual (base 129)"]}
                 />
-              </PieChart>
+                <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[0, 4, 4, 0]} />
+              </BarChart>
             </ResponsiveContainer>
+          </div>
+
+          <div className="mt-2 text-xs text-muted-foreground">
+            Base de cálculo fixa: {NEEDS_TOTAL.toLocaleString("pt-BR")}
           </div>
         </div>
       )}
