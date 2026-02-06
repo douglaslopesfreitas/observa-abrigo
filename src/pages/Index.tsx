@@ -33,8 +33,33 @@ function parseNumberOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function normalizeHeader(h: any): string {
+  return String(h ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .replace(/\s+/g, "_") // espaços viram _
+    .replace(/[^\w]/g, "_") // qualquer resto vira _
+    .replace(/_+/g, "_") // colapsa __
+    .replace(/^_+|_+$/g, ""); // remove _ no começo/fim
+}
+
 function rowsToCatalog(values: any[][]): CatalogRow[] {
   if (!Array.isArray(values) || values.length < 2) return [];
+
+  const headers = values[0].map(normalizeHeader);
+  const body = values.slice(1);
+
+  return body.map((r) => {
+    const obj: any = {};
+    headers.forEach((headerName, index) => {
+      if (headerName) obj[headerName] = String(r[index] ?? "").trim();
+    });
+    return obj as CatalogRow;
+  });
+}
+
   
   // Transforma os cabeçalhos em minúsculo e remove espaços
   const headers = values[0].map((h) => String(h ?? "").trim().toLowerCase());
