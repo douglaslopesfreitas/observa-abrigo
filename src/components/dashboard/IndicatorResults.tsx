@@ -80,7 +80,7 @@ function FonteLine({ fonte, url }: { fonte?: string; url?: string }) {
     <div className="text-sm text-muted-foreground">
       Fonte:{" "}
       {url ? (
-        <a
+        
           href={url}
           target="_blank"
           rel="noreferrer"
@@ -265,78 +265,61 @@ function rowsToCatalog(values: any[][]): CatalogRow[] {
   }, [filters.indicador]);
 
   useEffect(() => {
-    async function run() {
-      if (!filters.indicador || !meta?.sheet) return;
+    if (!meta?.sheet || !meta?.range) {
+      setRows([]);
+      return;
+    }
 
-      setLoading(true);
-      setErr(null);
+    setLoading(true);
+    setErr(null);
 
-      try {
-        const range =
-          meta.range && meta.range.includes("!")
-            ? meta.range
-            : `${meta.sheet}!${meta.range || "A:Z"}`;
+    const sheetRange = `${meta.sheet}!${meta.range}`;
 
-        // ✅ pega indicador e meta em paralelo
-        const [data, metaData] = await Promise.all([
-          getIndicador(range),
-          getIndicador("_meta!B1"),
-        ]);
-
-        const values: any[][] = data.values || [];
-
-        // metaData.values deve vir tipo [[ "03/02/2026" ]]
-        const metaValues: any[][] = metaData.values || [];
-        const b1 = metaValues?.[0]?.[0];
-        const b1Str = String(b1 ?? "").trim();
-        setUpdatedAtBR(b1Str ? b1Str : null);
-
-        if (values.length < 2) {
+    getIndicador(sheetRange)
+      .then((resp) => {
+        const vals = resp.values || [];
+        if (vals.length < 2) {
           setRows([]);
           return;
         }
 
-        const headers = values[0].map(normalizeHeader);
-        const body = values.slice(1);
+        const headers = (vals[0] || []).map(normalizeHeader);
+        const body = vals.slice(1);
 
-    const idxTerr = headers.indexOf("territorio");
-const idxData = headers.indexOf("data");
-const idxVal = headers.indexOf("valor");
-const idxFonte = headers.indexOf("fonte");
+        const idxTerr = headers.indexOf("territorio");
+        const idxData = headers.indexOf("data");
+        const idxCat = headers.indexOf("categoria");
+        const idxVal = headers.indexOf("valor");
+        const idxFonte = headers.indexOf("fonte");
 
-// ✅ Detecta automaticamente a coluna de categoria
-// (ignora as colunas conhecidas)
-const knownCols = ["territorio", "data", "valor", "fonte"];
-const idxCategoria = headers.findIndex(
-  (h, i) => !knownCols.includes(h) && h.trim() !== ""
-);
+        if (idxTerr < 0 || idxData < 0 || idxCat < 0 || idxVal < 0) {
+          setErr("Colunas obrigatórias ausentes (territorio, data, categoria, valor)");
+          setRows([]);
+          return;
+        }
 
-       let lastDateTmp = "";
-const parsed: ParsedRow[] = body.map((r) => {
-  const rawDate = String(r[idxData] ?? "").trim();
-  if (rawDate) lastDateTmp = rawDate;
+        let lastDate = "";
+        const parsed: ParsedRow[] = body.map((r) => {
+          const dataStr = String(r[idxData] ?? "").trim();
+          if (dataStr) lastDate = dataStr;
 
-  return {
-    territorio: String(r[idxTerr] ?? "").trim(),
-    data: rawDate || lastDateTmp, // corrige datas mescladas
-    categoria: idxCategoria >= 0 ? String(r[idxCategoria] ?? "").trim() : "", // ✅ Usa a coluna detectada
-    valor: parseNumber(r[idxVal]),
-    fonte: String(r[idxFonte] ?? "").trim(),
-  };
-});
+          return {
+            territorio: String(r[idxTerr] ?? "").trim(),
+            data: dataStr || lastDate,
+            categoria: String(r[idxCat] ?? "").trim(),
+            valor: parseNumber(r[idxVal]),
+            fonte: idxFonte >= 0 ? String(r[idxFonte] ?? "").trim() : "",
+          };
+        });
 
         setRows(parsed);
-      } catch (e: any) {
+      })
+      .catch((e) => {
+        setErr(String(e?.message || "Erro ao carregar"));
         setRows([]);
-        setUpdatedAtBR(null);
-        setErr(String(e?.message || e));
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    run();
-  }, [filters.indicador, meta?.sheet, meta?.range]);
+      })
+      .finally(() => setLoading(false));
+  }, [meta?.sheet, meta?.range]);
 
   const territorioSel = filters.territorio || "RJ";
 
@@ -531,9 +514,9 @@ const parsed: ParsedRow[] = body.map((r) => {
 
     {/* Fonte + Referência */}
     <div className="mt-3 space-y-1">
-      {notaExplicativa ? (
+      {meta?.nota_explicativa ? (
   <div className="text-sm text-muted-foreground whitespace-pre-line">
-    {notaExplicativa}
+    {meta.nota_explicativa}
   </div>
 ) : null}
 
