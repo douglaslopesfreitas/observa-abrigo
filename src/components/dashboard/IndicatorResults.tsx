@@ -506,6 +506,12 @@ const parsed: ParsedRow[] = body.map((r) => {
 
     {/* Fonte + Referência */}
     <div className="mt-3 space-y-1">
+      {notaExplicativa ? (
+  <div className="text-sm text-muted-foreground whitespace-pre-line">
+    {notaExplicativa}
+  </div>
+) : null}
+
       <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
       {lastDate ? (
         <div className="text-sm text-muted-foreground">
