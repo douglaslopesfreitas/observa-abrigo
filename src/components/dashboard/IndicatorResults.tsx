@@ -519,7 +519,9 @@ export function IndicatorResults({
         {view === "foto" && (
           <>
             <div className="mt-4">
+              {/* ✅ Key adicionada para forçar animação interna do ChartRenderer ao trocar indicador */}
               <ChartRenderer
+                key={`foto-${filters.indicador}`}
                 perfil={meta?.perfil || "padrao"}
                 data={fotografiaAtual?.fotoData || []}
                 unidade={meta?.unidade}
@@ -557,6 +559,7 @@ export function IndicatorResults({
                 </div>
               ) : (
                 <ChartRenderer
+                  key={`evol-${filters.indicador}`}
                   perfil={meta?.perfil === "pizza" ? "barras_agrupadas" : "linha"}
                   data={
                     meta?.perfil === "pizza"
@@ -585,7 +588,8 @@ export function IndicatorResults({
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stacked.data}>
+                  {/* ✅ Key para forçar animação do BarChart ao trocar indicador */}
+                  <BarChart key={`comp-${filters.indicador}`} data={stacked.data}>
                     <CartesianGrid
                       strokeDasharray="3 3"
                       stroke="hsl(var(--border))"
@@ -603,7 +607,10 @@ export function IndicatorResults({
                         dataKey={k}
                         stackId="a"
                         fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        {/* ✅ Animação Ativada aqui */}
                         isAnimationActive={true}
+                        animationDuration={1500}
+                        animationBegin={100}
                       />
                     ))}
                   </BarChart>
