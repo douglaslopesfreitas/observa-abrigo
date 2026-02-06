@@ -4,7 +4,7 @@ import { KPICards } from "@/components/dashboard/KPICards";
 import { OverviewCharts } from "@/components/dashboard/OverviewCharts";
 import { FilterSection } from "@/components/dashboard/FilterSection";
 import type { FilterState } from "@/types/dashboard";
-import { getCatalogo, getIndicadorSheet } from "@/services/sheetsApi";
+import { getCatalogo, getIndicadorSheet, getIndicador } from "@/services/sheetsApi";
 import { IndicatorResults } from "@/components/dashboard/IndicatorResults";
 import { LastUpdated } from "@/components/dashboard/LastUpdated";
 
@@ -139,7 +139,6 @@ type YnRow = {
   data: string;
   resposta: string;
   valor: number | null;
-  indicador_id?: string;
 };
 
 function normalizeHeaderKey(h: unknown): string {
@@ -155,8 +154,7 @@ function normalizeHeaderKey(h: unknown): string {
 }
 
 function findCategoryColumn(headersKey: string[]) {
-  // ✅ Impedimos que colunas de controle sejam confundidas com a coluna de resposta (Sim/Não)
-  const blocked = new Set(["territorio", "data", "valor", "fonte", "indicador_id", "indicador"]);
+  const blocked = new Set(["territorio", "data", "valor", "fonte"]);
   for (let i = 0; i < headersKey.length; i++) {
     const h = headersKey[i];
     if (!h) continue;
@@ -172,8 +170,8 @@ function calcPctFromYesNo(rows: YnRow[], target: "sim" | "nao") {
 
   const match = rows.find((r) => {
     const t = normTxt(r.resposta);
-    if (target === "sim") return t === "sim" || t === "s";
-    return t === "nao" || t === "não" || t === "n";
+    if (target === "sim") return t === "sim";
+    return t === "nao" || t === "não";
   });
 
   const v = match && typeof match.valor === "number" ? match.valor : 0;
@@ -310,7 +308,7 @@ export default function Index() {
         order.forEach((mod) => {
           const v = byMod.get(mod);
           if (typeof v === "number" && v > 0) {
-            // ✅ FIX "Em Em": Verificamos se a modalidade já começa com "Em"
+            // ✅ FIX "Em Em": Se o dado já vier com "Em", não duplicamos
             const label = mod.toLowerCase().startsWith("em ") ? mod : `Em ${mod}`;
             lines.push(`${label}: ${v.toLocaleString("pt-BR")}`);
           }
@@ -523,9 +521,10 @@ export default function Index() {
       });
   }, []);
 
-  // 5) ✅ KPI Vítimas de violência: Filtro preciso pelo indicador_id "violencia_s"
+  // 5) ✅ KPI Vítimas de violência: Busca especificamente a tabela do "violencia_s" (G1:L)
   useEffect(() => {
-    getIndicadorSheet("violencia")
+    // MUDANÇA: Buscando o intervalo G1:L que é onde está a tabela Sim/Não
+    getIndicador("violencia!G1:L")
       .then((d) => {
         const values: any[][] = d.values || [];
         if (values.length < 2) {
@@ -533,23 +532,13 @@ export default function Index() {
           return;
         }
 
-        const rawHeaders = (values[0] || []).map((x) => String(x ?? "").trim());
-        const headersNorm = rawHeaders.map((h) => normalizeHeaderKey(h));
+        const headersKey = (values[0] || []).map(normalizeHeaderKey);
         const body = values.slice(1);
 
-        const idxTerr = headersNorm.indexOf("territorio");
-        const idxData = headersNorm.indexOf("data");
-        const idxVal = headersNorm.indexOf("valor");
-        
-        // Buscamos a coluna de ID do indicador (pode ser "indicador_id" ou "indicador")
-        const idCandidates = ["indicador_id", "indicador", "id_indicador"];
-        let idxId = -1;
-        for (const c of idCandidates) {
-          const i = headersNorm.indexOf(normalizeHeaderKey(c));
-          if (i >= 0) { idxId = i; break; }
-        }
-
-        const idxCat = findCategoryColumn(headersNorm);
+        const idxTerr = headersKey.indexOf("territorio");
+        const idxData = headersKey.indexOf("data");
+        const idxVal = headersKey.indexOf("valor");
+        const idxCat = findCategoryColumn(headersKey);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
           setKpiVitimasViolenciaPct(null);
@@ -566,18 +555,11 @@ export default function Index() {
             data: rawDate || lastDateAny,
             resposta: String(r[idxCat] ?? "").trim(),
             valor: parseNumberOrNull(r[idxVal]),
-            indicador_id: idxId >= 0 ? String(r[idxId] ?? "").trim() : undefined
           };
         });
 
-        // ✅ FILTRO: Somente RJ e Somente o ID exato "violencia_s"
-        const filteredRows = parsed.filter((x) => {
-           const matchRJ = isRJ(x.territorio);
-           const matchID = x.indicador_id ? normTxt(x.indicador_id) === "violencia_s" : true; 
-           return matchRJ && matchID;
-        });
-
-        const dates = Array.from(new Set(filteredRows.map((x) => x.data).filter(Boolean))).sort();
+        const rj = parsed.filter((x) => isRJ(x.territorio));
+        const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
 
         if (!last) {
@@ -585,7 +567,8 @@ export default function Index() {
           return;
         }
 
-        const rowsLast = filteredRows.filter((x) => x.data === last);
+        const rowsLast = rj.filter((x) => x.data === last);
+        // Calcula a porcentagem do "Sim" sobre o total dessa tabela
         setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim"));
       })
       .catch(() => setKpiVitimasViolenciaPct(null));
