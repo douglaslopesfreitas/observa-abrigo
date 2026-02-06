@@ -29,7 +29,10 @@ type CatalogRow = {
 function parseNumberOrNull(v: unknown): number | null {
   const s = String(v ?? "").trim();
   if (!s) return null;
-  const n = Number(s.replace(",", "."));
+
+  // aceita "12,3" e "12.3"
+  const cleaned = s.replace(/\./g, "").replace(",", "."); // remove milhar com "." e troca "," por "."
+  const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -125,6 +128,11 @@ function normTxt(s: unknown) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function isRJ(territorio: string) {
+  const t = normTxt(territorio);
+  return t === "rj" || t.includes("rio de janeiro");
+}
+
 export default function Index() {
   const [filters, setFilters] = useState<FilterState>({
     area: null,
@@ -143,7 +151,7 @@ export default function Index() {
   const [kpiUnidades, setKpiUnidades] = useState<number | null>(null);
   const [kpiUnidadesDetails, setKpiUnidadesDetails] = useState<string[]>([]);
 
-  // ✅ AGORA: percentual de NÃO alfabetizados (mostra só isso no card)
+  // ✅ percentual de NÃO alfabetizados (mostra só isso no card)
   const [kpiNaoAlfabetizadosPct, setKpiNaoAlfabetizadosPct] = useState<number | null>(null);
 
   const handleFilterChange = useCallback((newFilters: FilterState) => {
@@ -167,7 +175,7 @@ export default function Index() {
     loadCatalogo();
   }, []);
 
-  // 2) KPI (acolhidos): total RJ + variação + breakdown por modalidade
+  // 2) KPI (acolhidos): total RJ + breakdown por modalidade
   useEffect(() => {
     getIndicadorSheet("acolhidos")
       .then((d) => {
@@ -223,7 +231,6 @@ export default function Index() {
         const lastTotal = computeTotalForDate(rj, last);
         setKpiAcolhidos(Number.isFinite(lastTotal) ? lastTotal : null);
 
-        // Breakdown por modalidade no último período
         const rowsLast = rj.filter((x) => x.data === last);
         const byMod = new Map<string, number>();
 
@@ -264,7 +271,7 @@ export default function Index() {
 
         setKpiAcolhidosDetails(lines);
 
-        // Variação percentual (você já removeu do card, mas deixei o cálculo intacto)
+        // cálculo mantido (não exibido no card)
         if (prev) {
           const prevTotal = computeTotalForDate(rj, prev);
           if (prevTotal > 0) {
@@ -391,15 +398,24 @@ export default function Index() {
           return;
         }
 
-        const headers = values[0].map((x) => String(x ?? "").trim().toLowerCase());
+        const rawHeaders = (values[0] || []).map((x) => String(x ?? "").trim());
+        const headersNorm = rawHeaders.map((h) => normTxt(h));
         const body = values.slice(1);
 
-        const idxTerritorio = headers.indexOf("territorio");
-        const idxData = headers.indexOf("data");
-        const idxValor = headers.indexOf("valor");
+        const idxTerritorio = headersNorm.indexOf("territorio");
+        const idxData = headersNorm.indexOf("data");
+        const idxValor = headersNorm.indexOf("valor");
 
-        let idxCategoria = headers.indexOf("categoria");
-        if (idxCategoria < 0) idxCategoria = headers.indexOf("alfabetizacao");
+        // tenta vários nomes pra coluna de categoria
+        const catCandidates = ["categoria", "alfabetizacao", "situacao", "situação", "condicao", "condição"];
+        let idxCategoria = -1;
+        for (const c of catCandidates) {
+          const i = headersNorm.indexOf(normTxt(c));
+          if (i >= 0) {
+            idxCategoria = i;
+            break;
+          }
+        }
 
         if (idxTerritorio < 0 || idxData < 0 || idxValor < 0 || idxCategoria < 0) {
           setKpiNaoAlfabetizadosPct(null);
@@ -419,7 +435,7 @@ export default function Index() {
           };
         });
 
-        const rj = parsed.filter((x) => x.territorio === "RJ");
+        const rj = parsed.filter((x) => isRJ(x.territorio));
         const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
 
@@ -437,7 +453,6 @@ export default function Index() {
 
         const nao = naoRow && typeof naoRow.valor === "number" ? naoRow.valor : null;
 
-        // total = soma das categorias do último período (alfabetizados + não alfabetizados, etc)
         const total = rowsLast.reduce((acc, r) => {
           const v = typeof r.valor === "number" ? r.valor : 0;
           return acc + (Number.isFinite(v) ? v : 0);
@@ -489,7 +504,6 @@ export default function Index() {
           ...kpi,
           value: typeof kpiAcolhidos === "number" ? kpiAcolhidos : null,
           details: kpiAcolhidosDetails,
-          // você já removeu a exibição da evolução no card
         };
       }
 
@@ -509,9 +523,7 @@ export default function Index() {
 
         return {
           ...kpi,
-          // ✅ mostra só a porcentagem
           value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
-          // ✅ sem detalhes embaixo
           details: [],
         };
       }
