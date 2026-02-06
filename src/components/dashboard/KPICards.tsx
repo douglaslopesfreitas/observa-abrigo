@@ -1,119 +1,85 @@
-import React from "react";
-import { TrendingUp, TrendingDown, Users, Building2, GraduationCap, Clock } from "lucide-react";
-import type { KPIData } from "@/types/dashboard";
 import { cn } from "@/lib/utils";
+import { Users, Building2, BookOpen, ShieldAlert, Brain } from "lucide-react";
 
-interface KPICardsProps {
-  data: KPIData[];
-  loading?: boolean;
-}
-
-const iconMap: Record<string, React.ElementType> = {
-  total_acolhidos: Users,
-  total_unidades: Building2,
-  taxa_frequencia: GraduationCap,
-  tempo_medio: Clock,
-  evolucao_acolhidos: TrendingUp,
+type KPI = {
+  id: string;
+  label: string;
+  value: any;
+  unit?: string;
+  details?: string[];
+  change?: number;
+  changeLabel?: string;
 };
 
-export function KPICards({ data, loading }: KPICardsProps) {
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="kpi-card">
-            <div className="skeleton-pulse h-4 w-20 mb-3" />
-            <div className="skeleton-pulse h-8 w-28 mb-2" />
-            <div className="skeleton-pulse h-3 w-16" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
+export function KPICards({ data }: { data: KPI[] }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
       {data.map((kpi, index) => {
-        const Icon = iconMap[kpi.id] || Users;
-        const isPositive = typeof kpi.change === "number" ? kpi.change > 0 : false;
-        const isHighlight = index === 0;
+        const isPrimary = index === 0;
 
         return (
           <div
             key={kpi.id}
-            className={cn("animate-fade-in", isHighlight ? "kpi-card-highlight" : "kpi-card")}
-            style={{ animationDelay: `${index * 100}ms` }}
+            className={cn(
+              "rounded-2xl border bg-card shadow-sm transition-colors",
+              // compacta um pouco
+              "p-4",
+              isPrimary && "bg-gradient-to-br from-[#359AD4] to-[#175070] text-white border-transparent"
+            )}
           >
-            <div className="flex items-start justify-between mb-3">
-              <span
-                className={cn(
-                  "text-sm font-medium",
-                  isHighlight ? "text-primary-foreground/80" : "text-muted-foreground"
-                )}
-              >
-                {kpi.label}
-              </span>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div
+                  className={cn(
+                    "font-medium leading-tight",
+                    // menor pra caber 5
+                    "text-[13px]",
+                    isPrimary ? "text-white/90" : "text-muted-foreground"
+                  )}
+                >
+                  {kpi.label}
+                </div>
 
-              <Icon
-                className={cn(
-                  "h-5 w-5",
-                  isHighlight ? "text-primary-foreground/60" : "text-muted-foreground/60"
-                )}
-              />
-            </div>
+                <div className={cn("mt-2 flex items-end gap-2")}>
+                  <div className={cn("font-semibold leading-none", "text-3xl")}>
+                    {kpi.value ?? "—"}
+                  </div>
+                  {kpi.unit ? (
+                    <div className={cn("pb-1 text-sm", isPrimary ? "text-white/85" : "text-muted-foreground")}>
+                      {kpi.unit}
+                    </div>
+                  ) : null}
+                </div>
 
-            <div
-              className={cn(
-                "text-2xl md:text-3xl font-bold mb-1",
-                isHighlight ? "text-primary-foreground" : "text-foreground"
-              )}
-            >
-              {typeof kpi.value === "number" ? kpi.value.toLocaleString("pt-BR") : kpi.value}
-              {kpi.unit ? <span className="text-base font-medium ml-1">{kpi.unit}</span> : null}
-            </div>
-
-            {/* ✅ DETALHES (texto miúdo dentro do card) */}
-            {kpi.details && kpi.details.length > 0 ? (
-              <div
-                className={cn(
-                  "text-xs leading-snug mt-1",
-                  isHighlight ? "text-primary-foreground/70" : "text-muted-foreground"
-                )}
-              >
-                {kpi.details.map((line, i) => (
-                  <div key={`${kpi.id}-detail-${i}`}>{line}</div>
-                ))}
-              </div>
-            ) : null}
-
-            {typeof kpi.change === "number" ? (
-              <div
-                className={cn(
-                  "flex items-center gap-1 text-sm mt-2",
-                  isHighlight ? "text-primary-foreground/80" : ""
-                )}
-              >
-                {isPositive ? (
-                  <TrendingUp className="h-4 w-4 text-secondary" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 text-destructive" />
-                )}
-
-                <span className={isPositive ? "text-secondary" : "text-destructive"}>
-                  {isPositive ? "+" : ""}
-                  {kpi.change}%
-                </span>
-
-                {kpi.changeLabel ? (
-                  <span className={cn(isHighlight ? "text-primary-foreground/60" : "text-muted-foreground")}>
-                    {kpi.changeLabel}
-                  </span>
+                {Array.isArray(kpi.details) && kpi.details.length > 0 ? (
+                  <div className={cn("mt-2 space-y-1", isPrimary ? "text-white/85" : "text-muted-foreground")}>
+                    {kpi.details.map((d, i) => (
+                      <div key={i} className="text-xs leading-snug">
+                        {d}
+                      </div>
+                    ))}
+                  </div>
                 ) : null}
               </div>
-            ) : null}
+
+              <div className={cn(isPrimary ? "text-white/90" : "text-muted-foreground")}>
+                <KPIIcon id={kpi.id} />
+              </div>
+            </div>
           </div>
         );
       })}
     </div>
   );
+}
+
+function KPIIcon({ id }: { id: string }) {
+  // ícones específicos pros seus 5 cards
+  if (id === "total_acolhidos") return <Users className="h-5 w-5" />;
+  if (id === "total_unidades") return <Building2 className="h-5 w-5" />;
+  if (id === "nao_alfabetizados") return <BookOpen className="h-5 w-5" />;
+  if (id === "vitimas_violencia") return <ShieldAlert className="h-5 w-5" />;
+  if (id === "sem_psico") return <Brain className="h-5 w-5" />;
+
+  return <Users className="h-5 w-5" />;
 }
