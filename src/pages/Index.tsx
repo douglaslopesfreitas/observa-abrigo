@@ -109,7 +109,7 @@ function shortModalidadeLabel(s: string) {
   return x;
 }
 
-// ===== Alfabetização (não alfabetizados) =====
+// ===== Alfabetização (percentual não alfabetizados) =====
 type AlfRow = {
   territorio: string;
   data: string;
@@ -117,7 +117,6 @@ type AlfRow = {
   valor: number | null;
 };
 
-// normalização simples para comparar “não alfabetizados” sem dor
 function normTxt(s: unknown) {
   return String(s ?? "")
     .trim()
@@ -144,8 +143,8 @@ export default function Index() {
   const [kpiUnidades, setKpiUnidades] = useState<number | null>(null);
   const [kpiUnidadesDetails, setKpiUnidadesDetails] = useState<string[]>([]);
 
-  // ✅ NOVO KPI: não alfabetizados (aba alfabetizacao)
-  const [kpiNaoAlfabetizados, setKpiNaoAlfabetizados] = useState<number | null>(null);
+  // ✅ AGORA: percentual de NÃO alfabetizados (mostra só isso no card)
+  const [kpiNaoAlfabetizadosPct, setKpiNaoAlfabetizadosPct] = useState<number | null>(null);
 
   const handleFilterChange = useCallback((newFilters: FilterState) => {
     setFilters(newFilters);
@@ -260,13 +259,12 @@ export default function Index() {
           .filter(([mod]) => !order.includes(mod))
           .sort((a, b) => b[1] - a[1])
           .forEach(([mod, v]) => {
-            if (v > 0)
-              lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
+            if (v > 0) lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
           });
 
         setKpiAcolhidosDetails(lines);
 
-        // Variação percentual (mantida no state, mas não será exibida no card)
+        // Variação percentual (você já removeu do card, mas deixei o cálculo intacto)
         if (prev) {
           const prevTotal = computeTotalForDate(rj, prev);
           if (prevTotal > 0) {
@@ -372,8 +370,7 @@ export default function Index() {
           .filter(([mod]) => !order.includes(mod))
           .sort((a, b) => b[1] - a[1])
           .forEach(([mod, v]) => {
-            if (v > 0)
-              lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
+            if (v > 0) lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
           });
 
         setKpiUnidadesDetails(lines);
@@ -384,13 +381,13 @@ export default function Index() {
       });
   }, []);
 
-  // ✅ 4) KPI (alfabetizacao): pega “não alfabetizados” do RJ no último período
+  // ✅ 4) KPI (alfabetizacao): calcula % não alfabetizados no RJ no último período
   useEffect(() => {
     getIndicadorSheet("alfabetizacao")
       .then((d) => {
         const values: any[][] = d.values || [];
         if (values.length < 2) {
-          setKpiNaoAlfabetizados(null);
+          setKpiNaoAlfabetizadosPct(null);
           return;
         }
 
@@ -402,12 +399,10 @@ export default function Index() {
         const idxValor = headers.indexOf("valor");
 
         let idxCategoria = headers.indexOf("categoria");
-        if (idxCategoria < 0) {
-          idxCategoria = headers.indexOf("alfabetizacao");
-        }
+        if (idxCategoria < 0) idxCategoria = headers.indexOf("alfabetizacao");
 
         if (idxTerritorio < 0 || idxData < 0 || idxValor < 0 || idxCategoria < 0) {
-          setKpiNaoAlfabetizados(null);
+          setKpiNaoAlfabetizadosPct(null);
           return;
         }
 
@@ -429,31 +424,34 @@ export default function Index() {
         const last = dates[dates.length - 1];
 
         if (!last) {
-          setKpiNaoAlfabetizados(null);
+          setKpiNaoAlfabetizadosPct(null);
           return;
         }
 
         const rowsLast = rj.filter((x) => x.data === last);
 
-        const alvo = rowsLast.find((r) => {
+        const naoRow = rowsLast.find((r) => {
           const c = normTxt(r.categoria);
           return c.includes("nao") && c.includes("alfabet");
         });
 
-        if (alvo && typeof alvo.valor === "number") {
-          setKpiNaoAlfabetizados(alvo.valor);
-          return;
-        }
+        const nao = naoRow && typeof naoRow.valor === "number" ? naoRow.valor : null;
 
-        const maxV = rowsLast.reduce((acc, r) => {
+        // total = soma das categorias do último período (alfabetizados + não alfabetizados, etc)
+        const total = rowsLast.reduce((acc, r) => {
           const v = typeof r.valor === "number" ? r.valor : 0;
-          return v > acc ? v : acc;
+          return acc + (Number.isFinite(v) ? v : 0);
         }, 0);
 
-        setKpiNaoAlfabetizados(maxV > 0 ? maxV : null);
+        if (typeof nao === "number" && total > 0) {
+          const pct = (nao / total) * 100;
+          setKpiNaoAlfabetizadosPct(Number.isFinite(pct) ? pct : null);
+        } else {
+          setKpiNaoAlfabetizadosPct(null);
+        }
       })
       .catch(() => {
-        setKpiNaoAlfabetizados(null);
+        setKpiNaoAlfabetizadosPct(null);
       });
   }, []);
 
@@ -491,7 +489,7 @@ export default function Index() {
           ...kpi,
           value: typeof kpiAcolhidos === "number" ? kpiAcolhidos : null,
           details: kpiAcolhidosDetails,
-          // ✅ REMOVIDO: change / changeLabel
+          // você já removeu a exibição da evolução no card
         };
       }
 
@@ -504,9 +502,17 @@ export default function Index() {
       }
 
       if (kpi.id === "nao_alfabetizados") {
+        const pct =
+          typeof kpiNaoAlfabetizadosPct === "number"
+            ? Math.round(kpiNaoAlfabetizadosPct * 10) / 10
+            : null;
+
         return {
           ...kpi,
-          value: typeof kpiNaoAlfabetizados === "number" ? kpiNaoAlfabetizados : null,
+          // ✅ mostra só a porcentagem
+          value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
+          // ✅ sem detalhes embaixo
+          details: [],
         };
       }
 
@@ -515,9 +521,10 @@ export default function Index() {
   }, [
     kpiAcolhidos,
     kpiAcolhidosDetails,
+    kpiAcolhidosChangePct,
     kpiUnidades,
     kpiUnidadesDetails,
-    kpiNaoAlfabetizados,
+    kpiNaoAlfabetizadosPct,
   ]);
 
   const hasActiveFilters = Boolean(filters.area || filters.indicador);
