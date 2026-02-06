@@ -139,6 +139,7 @@ type YnRow = {
   data: string;
   resposta: string;
   valor: number | null;
+  indicador_id?: string;
 };
 
 function normalizeHeaderKey(h: unknown): string {
@@ -154,7 +155,7 @@ function normalizeHeaderKey(h: unknown): string {
 }
 
 function findCategoryColumn(headersKey: string[]) {
-  const blocked = new Set(["territorio", "data", "valor", "fonte"]);
+  const blocked = new Set(["territorio", "data", "valor", "fonte", "indicador_id"]);
   for (let i = 0; i < headersKey.length; i++) {
     const h = headersKey[i];
     if (!h) continue;
@@ -308,7 +309,7 @@ export default function Index() {
         order.forEach((mod) => {
           const v = byMod.get(mod);
           if (typeof v === "number" && v > 0) {
-            // ✅ FIX "Em Em": Verificamos se a modalidade já começa com "Em"
+            // FIX "Em Em": Se o dado já vier com "Em", não duplicamos
             const label = mod.toLowerCase().startsWith("em ") ? mod : `Em ${mod}`;
             lines.push(`${label}: ${v.toLocaleString("pt-BR")}`);
           }
@@ -443,7 +444,7 @@ export default function Index() {
       });
   }, []);
 
-  // 4) ✅ KPI (educacao): Lógica corrigida para somar total da aba educacao
+  // 4) KPI (educação): busca da aba educacao e faz o calculo de porcentagem somando o total
   useEffect(() => {
     getIndicadorSheet("educacao")
       .then((d) => {
@@ -465,7 +466,10 @@ export default function Index() {
         let idxCategoria = -1;
         for (const c of catCandidates) {
           const i = headersNorm.indexOf(normTxt(c));
-          if (i >= 0) { idxCategoria = i; break; }
+          if (i >= 0) {
+            idxCategoria = i;
+            break;
+          }
         }
 
         if (idxTerritorio < 0 || idxData < 0 || idxValor < 0 || idxCategoria < 0) {
@@ -521,7 +525,7 @@ export default function Index() {
       });
   }, []);
 
-  // 5) KPI Vítimas de violência: % "Sim" / total (aba violencia)
+  // 5) ✅ KPI Vítimas de violência: Filtra pelo indicador_id "violencia_s" e calcula % "Sim"
   useEffect(() => {
     getIndicadorSheet("violencia")
       .then((d) => {
@@ -537,6 +541,7 @@ export default function Index() {
         const idxTerr = headersKey.indexOf("territorio");
         const idxData = headersKey.indexOf("data");
         const idxVal = headersKey.indexOf("valor");
+        const idxId = headersKey.indexOf("indicador_id"); // Buscamos a coluna do ID
         const idxCat = findCategoryColumn(headersKey);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
@@ -554,11 +559,17 @@ export default function Index() {
             data: rawDate || lastDateAny,
             resposta: String(r[idxCat] ?? "").trim(),
             valor: parseNumberOrNull(r[idxVal]),
+            indicador_id: idxId >= 0 ? String(r[idxId] ?? "").trim() : undefined
           };
         });
 
-        const rj = parsed.filter((x) => isRJ(x.territorio));
-        const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
+        // FILTRO: Apenas RJ e Apenas o indicador "violencia_s"
+        const filteredRows = parsed.filter((x) => 
+          isRJ(x.territorio) && 
+          (x.indicador_id === "violencia_s" || !x.indicador_id) // Fallback se ID não existir
+        );
+
+        const dates = Array.from(new Set(filteredRows.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
 
         if (!last) {
@@ -566,7 +577,7 @@ export default function Index() {
           return;
         }
 
-        const rowsLast = rj.filter((x) => x.data === last);
+        const rowsLast = filteredRows.filter((x) => x.data === last);
         setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim"));
       })
       .catch(() => setKpiVitimasViolenciaPct(null));
