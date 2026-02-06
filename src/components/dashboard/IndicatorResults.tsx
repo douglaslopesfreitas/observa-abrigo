@@ -371,7 +371,7 @@ export function IndicatorResults({
   const modalities = useMemo(() => {
     const set = new Set<string>();
     filtered.forEach((r) => {
-      if (r.categoria && r.categoria !== TOTAL_LABEL) set.add(r.categoria);
+      if (r.categoria && r.categoria.toLowerCase() !== TOTAL_LABEL.toLowerCase()) set.add(r.categoria);
     });
     return Array.from(set);
   }, [filtered]);
@@ -380,19 +380,21 @@ export function IndicatorResults({
   const fotografiaAtual = useMemo(() => {
     if (!lastDate) return null;
 
-    // Localiza a linha de Total para servir como divisor
+    // ✅ Busca a linha de Total de forma robusta (ignorando case)
     const totalRow = filtered.find(
-      (r) => r.data === lastDate && r.categoria === TOTAL_LABEL
+      (r) => r.data === lastDate && r.categoria.toLowerCase() === TOTAL_LABEL.toLowerCase()
     );
-    const denominatorValue = totalRow && typeof totalRow.valor === "number" ? totalRow.valor : null;
+    
+    // Pega o valor da linha total; se não existir, o denominador será 0 (e não haverá divisão por erro)
+    const denominatorValue = totalRow && typeof totalRow.valor === "number" ? totalRow.valor : 0;
 
-    // Define se o perfil atual exige cálculo de porcentagem sobre o total
+    // Define se o perfil atual exige cálculo de porcentagem sobre o total da planilha
     const isHorizontalPct = meta?.perfil === "barras_horizontais_percentual";
 
     const byMod = new Map<string, number>();
     filtered
       .filter(
-        (r) => r.data === lastDate && r.categoria && r.categoria !== TOTAL_LABEL
+        (r) => r.data === lastDate && r.categoria && r.categoria.toLowerCase() !== TOTAL_LABEL.toLowerCase()
       )
       .forEach((r) => {
         const v = typeof r.valor === "number" ? r.valor : 0;
@@ -402,8 +404,8 @@ export function IndicatorResults({
     const fotoData = Array.from(byMod.entries())
       .filter(([, v]) => v > 0)
       .map(([name, value]) => {
-        // Se o perfil for percentual e tivermos um divisor válido, calcula %
-        const finalValue = (isHorizontalPct && denominatorValue && denominatorValue > 0)
+        // ✅ Se o perfil for percentual e tivermos um divisor válido vindo da linha "Total", calcula %
+        const finalValue = (isHorizontalPct && denominatorValue > 0)
           ? (value / denominatorValue) * 100
           : value;
 
@@ -423,7 +425,7 @@ export function IndicatorResults({
     if (!dates.length) return [];
     return dates.map((d) => {
       const totalRow = filtered.find(
-        (r) => r.data === d && r.categoria === TOTAL_LABEL
+        (r) => r.data === d && r.categoria.toLowerCase() === TOTAL_LABEL.toLowerCase()
       );
 
       const total =
@@ -431,7 +433,7 @@ export function IndicatorResults({
           ? totalRow.valor
           : sumVals(
               filtered
-                .filter((r) => r.data === d && r.categoria !== TOTAL_LABEL)
+                .filter((r) => r.data === d && r.categoria.toLowerCase() !== TOTAL_LABEL.toLowerCase())
                 .map((r) => r.valor)
             );
 
@@ -471,18 +473,18 @@ export function IndicatorResults({
 
       const rowsOnDate = filtered.filter((r) => r.data === d);
       const hasBreakdown = rowsOnDate.some(
-        (r) => r.categoria && r.categoria !== TOTAL_LABEL && (r.valor || 0) > 0
+        (r) => r.categoria && r.categoria.toLowerCase() !== TOTAL_LABEL.toLowerCase() && (r.valor || 0) > 0
       );
 
       rowsOnDate.forEach((r) => {
         if (!r.categoria) return;
-        if (hasBreakdown && r.categoria === TOTAL_LABEL) return;
+        if (hasBreakdown && r.categoria.toLowerCase() === TOTAL_LABEL.toLowerCase()) return;
         if (!keys.includes(r.categoria)) return;
         const v = typeof r.valor === "number" ? r.valor : 0;
         obj[r.categoria] = (obj[r.categoria] || 0) + v;
       });
 
-      // ✅ LOGICA DO TOPO: Descobre qual é a última categoria com valor > 0 nesta data
+      // ✅ Descobre qual é a última categoria com valor > 0 nesta data
       const topKey =
         [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
       obj.__top = topKey;
@@ -527,6 +529,7 @@ export function IndicatorResults({
               Evolução
             </button>
 
+            {/* ✅ As abas continuam aparecendo normalmente, exceto se for perfil "pizza" */}
             {meta?.perfil !== "pizza" && (
               <button
                 onClick={() => setView("composicao")}
@@ -550,7 +553,7 @@ export function IndicatorResults({
               unidade={meta?.perfil === "barras_horizontais_percentual" ? "%" : meta?.unidade}
               formatDateBR={formatDateBR}
               showBanner={meta?.perfil === "padrao"}
-              totalValue={fotografiaAtual?.total}
+              totalValue={fotografiaAtual?.total || undefined}
             />
 
             <div className="mt-3 space-y-1">
@@ -628,7 +631,7 @@ export function IndicatorResults({
                         dataKey={k}
                         stackId="a"
                         fill={CHART_COLORS[i % CHART_COLORS.length]}
-                        shape={<RoundedTopBar />} // ✅ Aplica o topo arredondado dinâmico
+                        shape={<RoundedTopBar />}
                         isAnimationActive={true}
                         animationDuration={1500}
                         animationBegin={100}
