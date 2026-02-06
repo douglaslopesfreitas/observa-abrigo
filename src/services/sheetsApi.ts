@@ -25,7 +25,7 @@ export const getIndicador = async (range: string): Promise<SheetsResponse> => {
 };
 
 export const getCatalogo = async (
-  range = "catalogo!A:K"
+  range = "catalogo!A:Z"
 ): Promise<SheetsResponse> => {
   try {
     return await fetchSheets(range);
