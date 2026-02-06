@@ -443,7 +443,7 @@ export default function Index() {
       });
   }, []);
 
-  // 4) KPI (educacao): Lógica corrigida para somar total da aba educacao
+  // 4) ✅ KPI (educacao): Lógica corrigida para somar total da aba educacao
   useEffect(() => {
     getIndicadorSheet("educacao")
       .then((d) => {
@@ -760,15 +760,11 @@ export default function Index() {
           <KPICards data={kpiData as any} />
         </section>
 
-        <section>
-          <OverviewCharts />
-        </section>
-
-        <section className="pt-4">
-          {catalogoLoading ? (
-            <div className="text-sm text-muted-foreground">Carregando catálogo...</div>
-          ) : null}
-
+        {/* Explorar Indicadores (Movido para cá) */}
+        <section className="pt-2">
+          {catalogoLoading && (
+            <div className="text-sm text-muted-foreground mb-2">Carregando catálogo...</div>
+          )}
           <FilterSection
             filters={filters}
             onFilterChange={handleFilterChange}
@@ -776,9 +772,14 @@ export default function Index() {
           />
         </section>
 
-        {hasActiveFilters && (
-          <section>
+        {/* Troca entre Gráficos Gerais e Resultados do Filtro */}
+        {hasActiveFilters ? (
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <IndicatorResults filters={filters} catalogo={catalogo} />
+          </section>
+        ) : (
+          <section className="animate-in fade-in duration-500">
+            <OverviewCharts />
           </section>
         )}
 
