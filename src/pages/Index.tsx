@@ -260,12 +260,13 @@ export default function Index() {
           .filter(([mod]) => !order.includes(mod))
           .sort((a, b) => b[1] - a[1])
           .forEach(([mod, v]) => {
-            if (v > 0) lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
+            if (v > 0)
+              lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
           });
 
         setKpiAcolhidosDetails(lines);
 
-        // Variação percentual
+        // Variação percentual (mantida no state, mas não será exibida no card)
         if (prev) {
           const prevTotal = computeTotalForDate(rj, prev);
           if (prevTotal > 0) {
@@ -371,7 +372,8 @@ export default function Index() {
           .filter(([mod]) => !order.includes(mod))
           .sort((a, b) => b[1] - a[1])
           .forEach(([mod, v]) => {
-            if (v > 0) lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
+            if (v > 0)
+              lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
           });
 
         setKpiUnidadesDetails(lines);
@@ -399,10 +401,8 @@ export default function Index() {
         const idxData = headers.indexOf("data");
         const idxValor = headers.indexOf("valor");
 
-        // categoria pode vir como "categoria" ou algo equivalente
         let idxCategoria = headers.indexOf("categoria");
         if (idxCategoria < 0) {
-          // tenta "alfabetizacao" (caso sua planilha use isso como coluna)
           idxCategoria = headers.indexOf("alfabetizacao");
         }
 
@@ -435,13 +435,9 @@ export default function Index() {
 
         const rowsLast = rj.filter((x) => x.data === last);
 
-        // tenta achar explicitamente “não alfabetizado(s)”
         const alvo = rowsLast.find((r) => {
           const c = normTxt(r.categoria);
-          return (
-            c.includes("nao") &&
-            c.includes("alfabet")
-          );
+          return c.includes("nao") && c.includes("alfabet");
         });
 
         if (alvo && typeof alvo.valor === "number") {
@@ -449,7 +445,6 @@ export default function Index() {
           return;
         }
 
-        // fallback: se não achou, pega o MAIOR valor do último período (evita ficar vazio)
         const maxV = rowsLast.reduce((acc, r) => {
           const v = typeof r.valor === "number" ? r.valor : 0;
           return v > acc ? v : acc;
@@ -476,7 +471,6 @@ export default function Index() {
       unit: "",
     },
     {
-      // ✅ TROCA AQUI (antes era frequência escolar)
       id: "nao_alfabetizados",
       label: "Não alfabetizados",
       value: null,
@@ -497,11 +491,7 @@ export default function Index() {
           ...kpi,
           value: typeof kpiAcolhidos === "number" ? kpiAcolhidos : null,
           details: kpiAcolhidosDetails,
-          change:
-            typeof kpiAcolhidosChangePct === "number"
-              ? Math.round(kpiAcolhidosChangePct * 10) / 10
-              : undefined,
-          changeLabel: kpiAcolhidosChangePct != null ? "vs período anterior" : undefined,
+          // ✅ REMOVIDO: change / changeLabel
         };
       }
 
@@ -525,7 +515,6 @@ export default function Index() {
   }, [
     kpiAcolhidos,
     kpiAcolhidosDetails,
-    kpiAcolhidosChangePct,
     kpiUnidades,
     kpiUnidadesDetails,
     kpiNaoAlfabetizados,
