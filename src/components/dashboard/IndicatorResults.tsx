@@ -517,19 +517,16 @@ export function IndicatorResults({
 
         {/* ====== Fotografia atual ====== */}
         {view === "foto" && (
-          <>
-            <div className="mt-4">
-              {/* ✅ Key adicionada para forçar animação interna do ChartRenderer ao trocar indicador */}
-              <ChartRenderer
-                key={`foto-${filters.indicador}`}
-                perfil={meta?.perfil || "padrao"}
-                data={fotografiaAtual?.fotoData || []}
-                unidade={meta?.unidade}
-                formatDateBR={formatDateBR}
-                showBanner={meta?.perfil === "padrao"}
-                totalValue={fotografiaAtual?.total}
-              />
-            </div>
+          <div className="mt-4">
+            <ChartRenderer
+              key={`foto-${filters.indicador}`}
+              perfil={meta?.perfil || "padrao"}
+              data={fotografiaAtual?.fotoData || []}
+              unidade={meta?.unidade}
+              formatDateBR={formatDateBR}
+              showBanner={meta?.perfil === "padrao"}
+              totalValue={fotografiaAtual?.total}
+            />
 
             <div className="mt-3 space-y-1">
               {meta?.nota_explicativa ? (
@@ -546,7 +543,7 @@ export function IndicatorResults({
                 </div>
               ) : null}
             </div>
-          </>
+          </div>
         )}
 
         {/* ====== Evolução ====== */}
@@ -588,7 +585,6 @@ export function IndicatorResults({
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  {/* ✅ Key para forçar animação do BarChart ao trocar indicador */}
                   <BarChart key={`comp-${filters.indicador}`} data={stacked.data}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -607,7 +603,6 @@ export function IndicatorResults({
                         dataKey={k}
                         stackId="a"
                         fill={CHART_COLORS[i % CHART_COLORS.length]}
-                        {/* ✅ Animação Ativada aqui */}
                         isAnimationActive={true}
                         animationDuration={1500}
                         animationBegin={100}
