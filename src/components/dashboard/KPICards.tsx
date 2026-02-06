@@ -1,3 +1,4 @@
+import React from "react";
 import { TrendingUp, TrendingDown, Users, Building2, GraduationCap, Clock } from "lucide-react";
 import type { KPIData } from "@/types/dashboard";
 import { cn } from "@/lib/utils";
@@ -34,7 +35,7 @@ export function KPICards({ data, loading }: KPICardsProps) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {data.map((kpi, index) => {
         const Icon = iconMap[kpi.id] || Users;
-        const isPositive = kpi.change && kpi.change > 0;
+        const isPositive = typeof kpi.change === "number" ? kpi.change > 0 : false;
         const isHighlight = index === 0;
 
         return (
@@ -52,6 +53,7 @@ export function KPICards({ data, loading }: KPICardsProps) {
               >
                 {kpi.label}
               </span>
+
               <Icon
                 className={cn(
                   "h-5 w-5",
@@ -67,26 +69,48 @@ export function KPICards({ data, loading }: KPICardsProps) {
               )}
             >
               {typeof kpi.value === "number" ? kpi.value.toLocaleString("pt-BR") : kpi.value}
+              {kpi.unit ? <span className="text-base font-medium ml-1">{kpi.unit}</span> : null}
             </div>
 
-            {kpi.change !== undefined && (
-              <div className={cn("flex items-center gap-1 text-sm", isHighlight ? "text-primary-foreground/80" : "")}>
+            {/* ✅ DETALHES (texto miúdo dentro do card) */}
+            {kpi.details && kpi.details.length > 0 ? (
+              <div
+                className={cn(
+                  "text-xs leading-snug mt-1",
+                  isHighlight ? "text-primary-foreground/70" : "text-muted-foreground"
+                )}
+              >
+                {kpi.details.map((line, i) => (
+                  <div key={`${kpi.id}-detail-${i}`}>{line}</div>
+                ))}
+              </div>
+            ) : null}
+
+            {typeof kpi.change === "number" ? (
+              <div
+                className={cn(
+                  "flex items-center gap-1 text-sm mt-2",
+                  isHighlight ? "text-primary-foreground/80" : ""
+                )}
+              >
                 {isPositive ? (
                   <TrendingUp className="h-4 w-4 text-secondary" />
                 ) : (
                   <TrendingDown className="h-4 w-4 text-destructive" />
                 )}
+
                 <span className={isPositive ? "text-secondary" : "text-destructive"}>
                   {isPositive ? "+" : ""}
                   {kpi.change}%
                 </span>
-                {kpi.changeLabel && (
+
+                {kpi.changeLabel ? (
                   <span className={cn(isHighlight ? "text-primary-foreground/60" : "text-muted-foreground")}>
                     {kpi.changeLabel}
                   </span>
-                )}
+                ) : null}
               </div>
-            )}
+            ) : null}
           </div>
         );
       })}

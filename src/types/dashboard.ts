@@ -4,7 +4,7 @@ export interface DataRecord {
   indicador_nome: string;
   descricao?: string;
   fonte: string;
-  territorio_tipo: 'brasil' | 'uf' | 'municipio';
+  territorio_tipo: "brasil" | "uf" | "municipio";
   territorio_nome: string;
   territorio_codigo?: string;
   periodo?: string;
@@ -21,6 +21,9 @@ export interface KPIData {
   unit?: string;
   change?: number;
   changeLabel?: string;
+
+  // ✅ NOVO: linhas de texto miúdo dentro do card
+  details?: string[];
 }
 
 export interface ChartData {
@@ -52,8 +55,8 @@ export interface AreaInfo {
 }
 
 // ✅ NOVOS TIPOS
-export type TipoIndicador = 'quantidade' | 'distribuicao' | 'serie' | 'evolucao';
-export type PerfilVisualizacao = 'padrao' | 'pizza';
+export type TipoIndicador = "quantidade" | "distribuicao" | "serie" | "evolucao";
+export type PerfilVisualizacao = "padrao" | "pizza";
 
 // ✅ INTERFACE COMPLETA DO CATÁLOGO
 export interface CatalogRow {
@@ -65,8 +68,8 @@ export interface CatalogRow {
   nota_explicativa?: string; // Nova coluna (opcional)
   sheet?: string;
   range?: string;
-  tipo?: TipoIndicador;           // ✅ Nova coluna
-  perfil?: PerfilVisualizacao;    // ✅ Nova coluna
+  tipo?: TipoIndicador; // ✅ Nova coluna
+  perfil?: PerfilVisualizacao; // ✅ Nova coluna
   titulo?: string;
   unidade?: string;
   territorio_col?: string;
