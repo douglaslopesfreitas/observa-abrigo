@@ -74,6 +74,44 @@ function computeTotalForDate(rows: AcolhidosRow[], date: string): number {
     .reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
 }
 
+type AbrigosRow = {
+  territorio: string;
+  data: string;
+  modalidade: string;
+  valor: number | null;
+};
+
+function computeTotalAbrigosForDate(rows: AbrigosRow[], date: string): number {
+  // No sheet "abrigos" o total costuma ser "Todos os acolhimentos"
+  const totalRow =
+    rows.find((r) => r.data === date && r.modalidade === "Todos os acolhimentos") ||
+    rows.find((r) => r.data === date && r.modalidade === "Em todos os acolhimentos");
+
+  if (totalRow && typeof totalRow.valor === "number") return totalRow.valor;
+
+  return rows
+    .filter(
+      (r) =>
+        r.data === date &&
+        r.modalidade &&
+        r.modalidade !== "Todos os acolhimentos" &&
+        r.modalidade !== "Em todos os acolhimentos"
+    )
+    .reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
+}
+
+function shortModalidadeLabel(s: string) {
+  const x = (s || "").trim();
+  if (!x) return "";
+  if (x === "Acolhimento Institucional") return "Institucional";
+  if (x === "Famílias Acolhedoras") return "Famílias acolhedoras";
+  if (x === "Casa-Lar") return "Casa-Lar";
+  if (x === "Acolhimentos de Segunda à Sexta") return "Seg a sex";
+  if (x === "Acolhimento para Aluno Residente") return "Aluno residente";
+  if (x === "Acolhimento Especializado em Dependentes Químicos") return "Especializado";
+  return x;
+}
+
 export default function Index() {
   const [filters, setFilters] = useState<FilterState>({
     area: null,
@@ -87,6 +125,10 @@ export default function Index() {
 
   const [kpiAcolhidos, setKpiAcolhidos] = useState<number | null>(null);
   const [kpiAcolhidosChangePct, setKpiAcolhidosChangePct] = useState<number | null>(null);
+
+  // ✅ NOVO KPI: entidades de acolhimento (aba "abrigos")
+  const [kpiUnidades, setKpiUnidades] = useState<number | null>(null);
+  const [kpiUnidadesDetails, setKpiUnidadesDetails] = useState<string[]>([]);
 
   const handleFilterChange = useCallback((newFilters: FilterState) => {
     setFilters(newFilters);
@@ -180,6 +222,108 @@ export default function Index() {
       });
   }, []);
 
+  // ✅ 3) KPI automático (abrigos): total de entidades do RJ no último período + breakdown por modalidade
+  useEffect(() => {
+    getIndicadorSheet("abrigos")
+      .then((d) => {
+        const values: any[][] = d.values || [];
+        if (values.length < 2) {
+          setKpiUnidades(null);
+          setKpiUnidadesDetails([]);
+          return;
+        }
+
+        const headers = values[0].map((x) => String(x ?? "").trim().toLowerCase());
+        const body = values.slice(1);
+
+        const idxTerritorio = headers.indexOf("territorio");
+        const idxData = headers.indexOf("data");
+        const idxModalidade = headers.indexOf("modalidade");
+        const idxValor = headers.indexOf("valor");
+
+        if (idxTerritorio < 0 || idxData < 0 || idxModalidade < 0 || idxValor < 0) {
+          setKpiUnidades(null);
+          setKpiUnidadesDetails([]);
+          return;
+        }
+
+        let lastDateAny = "";
+        const parsed: AbrigosRow[] = body.map((r) => {
+          const rawDate = String(r[idxData] ?? "").trim();
+          if (rawDate) lastDateAny = rawDate;
+
+          return {
+            territorio: String(r[idxTerritorio] ?? "").trim(),
+            data: rawDate || lastDateAny,
+            modalidade: String(r[idxModalidade] ?? "").trim(),
+            valor: parseNumberOrNull(r[idxValor]),
+          };
+        });
+
+        const rj = parsed.filter((x) => x.territorio === "RJ");
+        const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
+        const last = dates[dates.length - 1];
+
+        if (!last) {
+          setKpiUnidades(null);
+          setKpiUnidadesDetails([]);
+          return;
+        }
+
+        const lastTotal = computeTotalAbrigosForDate(rj, last);
+        setKpiUnidades(Number.isFinite(lastTotal) ? lastTotal : null);
+
+        // Breakdown no último período
+        const rowsLast = rj.filter((x) => x.data === last);
+
+        const order = [
+          "Acolhimento Institucional",
+          "Famílias Acolhedoras",
+          "Casa-Lar",
+          "Acolhimento Especializado em Dependentes Químicos",
+          "Acolhimentos de Segunda à Sexta",
+          "Acolhimento para Aluno Residente",
+        ];
+
+        const byMod = new Map<string, number>();
+
+        rowsLast.forEach((r) => {
+          const mod = (r.modalidade || "").trim();
+          if (!mod) return;
+          if (mod === "Todos os acolhimentos" || mod === "Em todos os acolhimentos") return;
+
+          const v = typeof r.valor === "number" ? r.valor : 0;
+          if (!Number.isFinite(v) || v <= 0) return;
+
+          byMod.set(mod, (byMod.get(mod) || 0) + v);
+        });
+
+        const lines: string[] = [];
+
+        // Primeiro os que estão no order
+        order.forEach((mod) => {
+          const v = byMod.get(mod);
+          if (typeof v === "number" && v > 0) {
+            lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
+          }
+        });
+
+        // Depois qualquer modalidade extra que aparecer
+        Array.from(byMod.entries())
+          .filter(([mod]) => !order.includes(mod))
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([mod, v]) => {
+            if (v > 0) lines.push(`${shortModalidadeLabel(mod)}: ${v.toLocaleString("pt-BR")}`);
+          });
+
+        setKpiUnidadesDetails(lines);
+      })
+      .catch(() => {
+        setKpiUnidades(null);
+        setKpiUnidadesDetails([]);
+      });
+  }, []);
+
   const KPI_BASE = [
     {
       id: "total_acolhidos",
@@ -188,8 +332,9 @@ export default function Index() {
       unit: "",
     },
     {
-      id: "evolucao_acolhidos",
-      label: "Evolução do acolhimento",
+      // ✅ TROCA AQUI
+      id: "total_unidades",
+      label: "Entidades de acolhimento",
       value: null,
       unit: "",
     },
@@ -216,20 +361,18 @@ export default function Index() {
         };
       }
 
-      if (kpi.id === "evolucao_acolhidos") {
-        if (typeof kpiAcolhidosChangePct === "number") {
-          const sign = kpiAcolhidosChangePct > 0 ? "+" : "";
-          return {
-            ...kpi,
-            value: `${sign}${kpiAcolhidosChangePct.toFixed(1)}%`,
-          };
-        }
-        return { ...kpi, value: null };
+      if (kpi.id === "total_unidades") {
+        return {
+          ...kpi,
+          value: typeof kpiUnidades === "number" ? kpiUnidades : null,
+          details: kpiUnidadesDetails,
+        };
       }
 
+      // Mantém os outros como null por enquanto
       return { ...kpi, value: null };
     });
-  }, [kpiAcolhidos, kpiAcolhidosChangePct]);
+  }, [kpiAcolhidos, kpiUnidades, kpiUnidadesDetails]);
 
   const hasActiveFilters = Boolean(filters.area || filters.indicador);
 
