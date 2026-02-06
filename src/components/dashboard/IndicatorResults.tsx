@@ -269,11 +269,11 @@ export function IndicatorResults({
             "modalidade",
             "faixa",
             "raca",
-            "raça",
+            "raca_",
             "alfabetizacao",
-            "alfabetização",
             "atendimento_psicologico",
             "atendimento_psicológico",
+            "atendimento_psicologico_",
           ].map(normalizeHeader);
 
           for (const c of candidatos) {
@@ -288,8 +288,7 @@ export function IndicatorResults({
         if (idxCat < 0) {
           idxCat = headers.findIndex((h, i) => {
             if (!h) return false;
-            if (i === idxTerr || i === idxData || i === idxVal || i === idxFonte)
-              return false;
+            if (i === idxTerr || i === idxData || i === idxVal || i === idxFonte) return false;
             return true;
           });
         }
@@ -306,7 +305,8 @@ export function IndicatorResults({
           const dataStr = String(r[idxData] ?? "").trim();
           if (dataStr) lastDate = dataStr;
 
-          const categoria = idxCat >= 0 ? String(r[idxCat] ?? "").trim() : "Geral";
+          const categoria =
+            idxCat >= 0 ? String(r[idxCat] ?? "").trim() : "Geral";
 
           return {
             territorio: String(r[idxTerr] ?? "").trim(),
@@ -354,20 +354,29 @@ export function IndicatorResults({
   const fotografiaAtual = useMemo(() => {
     if (!lastDate) return null;
 
-    const totalRow = filtered.find((r) => r.data === lastDate && r.categoria === TOTAL_LABEL);
+    const totalRow = filtered.find(
+      (r) => r.data === lastDate && r.categoria === TOTAL_LABEL
+    );
 
     const total =
       totalRow && typeof totalRow.valor === "number"
         ? totalRow.valor
         : sumVals(
             filtered
-              .filter((r) => r.data === lastDate && r.categoria && r.categoria !== TOTAL_LABEL)
+              .filter(
+                (r) =>
+                  r.data === lastDate &&
+                  r.categoria &&
+                  r.categoria !== TOTAL_LABEL
+              )
               .map((r) => r.valor)
           );
 
     const byMod = new Map<string, number>();
     filtered
-      .filter((r) => r.data === lastDate && r.categoria && r.categoria !== TOTAL_LABEL)
+      .filter(
+        (r) => r.data === lastDate && r.categoria && r.categoria !== TOTAL_LABEL
+      )
       .forEach((r) => {
         const v = typeof r.valor === "number" ? r.valor : 0;
         byMod.set(r.categoria, (byMod.get(r.categoria) || 0) + v);
@@ -378,19 +387,29 @@ export function IndicatorResults({
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
-    return { data: lastDate, total, fotoData };
+    return {
+      data: lastDate,
+      total,
+      fotoData,
+    };
   }, [filtered, lastDate]);
 
   // ===== Evolução =====
   const lineData = useMemo(() => {
     if (!dates.length) return [];
     return dates.map((d) => {
-      const totalRow = filtered.find((r) => r.data === d && r.categoria === TOTAL_LABEL);
+      const totalRow = filtered.find(
+        (r) => r.data === d && r.categoria === TOTAL_LABEL
+      );
 
       const total =
         totalRow && typeof totalRow.valor === "number"
           ? totalRow.valor
-          : sumVals(filtered.filter((r) => r.data === d && r.categoria !== TOTAL_LABEL).map((r) => r.valor));
+          : sumVals(
+              filtered
+                .filter((r) => r.data === d && r.categoria !== TOTAL_LABEL)
+                .map((r) => r.valor)
+            );
 
       return { date: d, value: total };
     });
@@ -400,11 +419,17 @@ export function IndicatorResults({
   const stacked = useMemo(() => {
     if (!dates.length) return { data: [] as any[], keys: [] as string[] };
 
-    const keptMods = modalities.filter((m) => filtered.some((r) => r.categoria === m && (r.valor || 0) > 0));
+    const keptMods = modalities.filter((m) =>
+      filtered.some((r) => r.categoria === m && (r.valor || 0) > 0)
+    );
 
     const sortedMods = [...keptMods].sort((a, b) => {
-      const sumA = filtered.filter((r) => r.categoria === a).reduce((acc, r) => acc + (r.valor || 0), 0);
-      const sumB = filtered.filter((r) => r.categoria === b).reduce((acc, r) => acc + (r.valor || 0), 0);
+      const sumA = filtered
+        .filter((r) => r.categoria === a)
+        .reduce((acc, r) => acc + (r.valor || 0), 0);
+      const sumB = filtered
+        .filter((r) => r.categoria === b)
+        .reduce((acc, r) => acc + (r.valor || 0), 0);
       return sumA - sumB;
     });
 
@@ -433,7 +458,8 @@ export function IndicatorResults({
         obj[r.categoria] = (obj[r.categoria] || 0) + v;
       });
 
-      const topKey = [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
+      const topKey =
+        [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
       obj.__top = topKey;
     });
 
@@ -450,18 +476,12 @@ export function IndicatorResults({
             <h3 className="section-title">
               {meta?.titulo || meta?.indicador_nome || "Indicador"}
             </h3>
-
             {loading && (
-              <div className="text-sm text-muted-foreground mt-1">Carregando dados...</div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Carregando dados...
+              </div>
             )}
             {err && <div className="text-sm text-destructive mt-1">Erro: {err}</div>}
-
-            {/* ✅ NOTA EXPLICATIVA AGORA SEMPRE APARECE (em todas as abas) */}
-            {meta?.nota_explicativa ? (
-              <div className="text-sm text-muted-foreground whitespace-pre-line mt-2">
-                {meta.nota_explicativa}
-              </div>
-            ) : null}
           </div>
 
           <div className="flex items-center gap-2">
@@ -473,7 +493,6 @@ export function IndicatorResults({
             >
               Fotografia atual
             </button>
-
             <button
               onClick={() => setView("evolucao")}
               className={`h-9 px-3 rounded-md border text-sm transition ${
@@ -511,7 +530,14 @@ export function IndicatorResults({
             </div>
 
             <div className="mt-3 space-y-1">
+              {meta?.nota_explicativa ? (
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {meta.nota_explicativa}
+                </div>
+              ) : null}
+
               <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+
               {lastDate ? (
                 <div className="text-sm text-muted-foreground">
                   Referência: {formatDateBR(lastDate)}
@@ -543,7 +569,6 @@ export function IndicatorResults({
                 />
               )}
             </div>
-
             <div className="mt-3">
               <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
             </div>
@@ -561,8 +586,15 @@ export function IndicatorResults({
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stacked.data}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={formatDateBR} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={formatDateBR}
+                    />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
                     {stacked.keys.map((k, i) => (
@@ -578,7 +610,6 @@ export function IndicatorResults({
                 </ResponsiveContainer>
               )}
             </div>
-
             <div className="mt-3">
               <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
             </div>
