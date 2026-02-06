@@ -155,6 +155,7 @@ function normalizeHeaderKey(h: unknown): string {
 }
 
 function findCategoryColumn(headersKey: string[]) {
+  // ✅ Impedimos que colunas de controle sejam confundidas com a coluna de resposta (Sim/Não)
   const blocked = new Set(["territorio", "data", "valor", "fonte", "indicador_id", "indicador"]);
   for (let i = 0; i < headersKey.length; i++) {
     const h = headersKey[i];
@@ -171,8 +172,8 @@ function calcPctFromYesNo(rows: YnRow[], target: "sim" | "nao") {
 
   const match = rows.find((r) => {
     const t = normTxt(r.resposta);
-    if (target === "sim") return t === "sim";
-    return t === "nao" || t === "não";
+    if (target === "sim") return t === "sim" || t === "s";
+    return t === "nao" || t === "não" || t === "n";
   });
 
   const v = match && typeof match.valor === "number" ? match.valor : 0;
@@ -522,7 +523,7 @@ export default function Index() {
       });
   }, []);
 
-  // 5) ✅ KPI Vítimas de violência: Filtra pelo indicador_id "violencia_s" e calcula % "Sim"
+  // 5) ✅ KPI Vítimas de violência: Filtro preciso pelo indicador_id "violencia_s"
   useEffect(() => {
     getIndicadorSheet("violencia")
       .then((d) => {
@@ -540,7 +541,7 @@ export default function Index() {
         const idxData = headersNorm.indexOf("data");
         const idxVal = headersNorm.indexOf("valor");
         
-        // Procura a coluna de ID do indicador de forma flexível
+        // Buscamos a coluna de ID do indicador (pode ser "indicador_id" ou "indicador")
         const idCandidates = ["indicador_id", "indicador", "id_indicador"];
         let idxId = -1;
         for (const c of idCandidates) {
@@ -551,7 +552,6 @@ export default function Index() {
         const idxCat = findCategoryColumn(headersNorm);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
-          console.warn("Violência: Colunas não encontradas", { idxTerr, idxData, idxVal, idxCat });
           setKpiVitimasViolenciaPct(null);
           return;
         }
@@ -570,7 +570,7 @@ export default function Index() {
           };
         });
 
-        // ✅ FILTRO CRÍTICO: apenas RJ e apenas o ID "violencia_s"
+        // ✅ FILTRO: Somente RJ e Somente o ID exato "violencia_s"
         const filteredRows = parsed.filter((x) => {
            const matchRJ = isRJ(x.territorio);
            const matchID = x.indicador_id ? normTxt(x.indicador_id) === "violencia_s" : true; 
@@ -588,10 +588,7 @@ export default function Index() {
         const rowsLast = filteredRows.filter((x) => x.data === last);
         setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim"));
       })
-      .catch((err) => {
-        console.error("Erro no KPI Violência:", err);
-        setKpiVitimasViolenciaPct(null);
-      });
+      .catch(() => setKpiVitimasViolenciaPct(null));
   }, []);
 
   // 6) KPI Sem acompanhamento psicológico individualizado: % "Não" / total
