@@ -4,14 +4,12 @@ import {
   Bar,
   LineChart,
   Line,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
 import { getIndicadorSheet } from "@/services/sheetsApi";
 
@@ -34,7 +32,7 @@ const CHART_COLORS = [
   "#FFE045",
 ];
 
-// ✅ total fixo para % em doações/maiores necessidades
+// ✅ total fixo usado APENAS no cálculo (%), não aparece na UI
 const NEEDS_TOTAL = 129;
 
 function EmptyState({ title }: { title: string }) {
@@ -110,15 +108,6 @@ type RowParsed = {
   fonte?: string;
 };
 
-function detectCategoryIndex(headersNorm: string[], candidates: string[]) {
-  for (const c of candidates) {
-    const i = headersNorm.indexOf(normTxt(c));
-    if (i >= 0) return i;
-  }
-  return -1;
-}
-
-// ✅ fallback: se não achar categoria pelo nome, pega a primeira coluna que não seja territorio/data/valor/fonte
 function detectCategoryFallback(headersNorm: string[]) {
   const blocked = new Set(["territorio", "data", "valor", "fonte"]);
   for (let i = 0; i < headersNorm.length; i++) {
@@ -222,15 +211,12 @@ export function OverviewCharts() {
         const idxFonte = headersNorm.indexOf("fonte");
         const hasFonteColumn = idxFonte >= 0;
 
-        let idxCat = detectCategoryIndex(headersNorm, [
-          "categoria",
-          "faixa_etaria",
-          "faixa etaria",
-          "faixa_etária",
-          "faixa etária",
-          "idade",
-          "faixa",
-        ]);
+        let idxCat = headersNorm.indexOf("categoria");
+        if (idxCat < 0) idxCat = headersNorm.indexOf("faixa_etaria");
+        if (idxCat < 0) idxCat = headersNorm.indexOf("faixa etaria");
+        if (idxCat < 0) idxCat = headersNorm.indexOf("faixa_etária");
+        if (idxCat < 0) idxCat = headersNorm.indexOf("faixa etária");
+        if (idxCat < 0) idxCat = headersNorm.indexOf("idade");
         if (idxCat < 0) idxCat = detectCategoryFallback(headersNorm);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
@@ -304,7 +290,9 @@ export function OverviewCharts() {
         const idxFonte = headersNorm.indexOf("fonte");
         const hasFonteColumn = idxFonte >= 0;
 
-        let idxCat = detectCategoryIndex(headersNorm, ["raca", "raça", "categoria"]);
+        let idxCat = headersNorm.indexOf("raca");
+        if (idxCat < 0) idxCat = headersNorm.indexOf("raça");
+        if (idxCat < 0) idxCat = headersNorm.indexOf("categoria");
         if (idxCat < 0) idxCat = detectCategoryFallback(headersNorm);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
@@ -349,7 +337,7 @@ export function OverviewCharts() {
       .catch(() => setRacaData([]));
   }, []);
 
-  // ===== Doações / maiores necessidades (aba doacao) em PERCENTUAL com total fixo 129 =====
+  // ===== Maiores Necessidades (aba doacao) em PERCENTUAL com total fixo 129 (não aparece na UI) =====
   useEffect(() => {
     getIndicadorSheet("doacao")
       .then((d) => {
@@ -368,16 +356,10 @@ export function OverviewCharts() {
         const idxFonte = headersNorm.indexOf("fonte");
         const hasFonteColumn = idxFonte >= 0;
 
-        let idxCat = detectCategoryIndex(headersNorm, [
-          "categoria",
-          "necessidade",
-          "necessidades",
-          "maiores_necessidades",
-          "maiores necessidades",
-          "doacao",
-          "doação",
-          "item",
-        ]);
+        let idxCat = headersNorm.indexOf("categoria");
+        if (idxCat < 0) idxCat = headersNorm.indexOf("necessidade");
+        if (idxCat < 0) idxCat = headersNorm.indexOf("necessidades");
+        if (idxCat < 0) idxCat = headersNorm.indexOf("item");
         if (idxCat < 0) idxCat = detectCategoryFallback(headersNorm);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
@@ -419,7 +401,6 @@ export function OverviewCharts() {
           return;
         }
 
-        // ✅ percentual pelo total fixo 129
         const mapped = rowsLast
           .map((r) => ({
             name: r.categoria,
@@ -506,7 +487,7 @@ export function OverviewCharts() {
                   dataKey="name"
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   axisLine={{ stroke: "hsl(var(--border))" }}
-                  width={90}
+                  width={130}
                 />
                 <Tooltip
                   contentStyle={{
@@ -523,12 +504,12 @@ export function OverviewCharts() {
         </div>
       )}
 
-      {/* Recorte racial */}
+      {/* Recorte Racial */}
       {racaData.length === 0 ? (
-        <EmptyState title="Recorte racial" />
+        <EmptyState title="Recorte Racial" />
       ) : (
         <div className="chart-container animate-fade-in" style={{ animationDelay: "400ms" }}>
-          <h3 className="section-title">Recorte racial</h3>
+          <h3 className="section-title">Recorte Racial</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={racaData}>
@@ -561,12 +542,12 @@ export function OverviewCharts() {
         </div>
       )}
 
-      {/* Doações / maiores necessidades (BARRA + % com total fixo 129) */}
+      {/* Maiores Necessidades (BARRA + %). Não mostra "129" em lugar nenhum */}
       {needsData.length === 0 ? (
-        <EmptyState title="Doações e maiores necessidades" />
+        <EmptyState title="Maiores Necessidades" />
       ) : (
         <div className="chart-container animate-fade-in" style={{ animationDelay: "500ms" }}>
-          <h3 className="section-title">Doações e maiores necessidades</h3>
+          <h3 className="section-title">Maiores Necessidades</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={needsData} layout="vertical">
@@ -583,7 +564,8 @@ export function OverviewCharts() {
                   dataKey="name"
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   axisLine={{ stroke: "hsl(var(--border))" }}
-                  width={120}
+                  width={200}     // ✅ aumenta pra caber o nome inteiro
+                  interval={0}     // ✅ tenta forçar mostrar todos
                 />
                 <Tooltip
                   contentStyle={{
@@ -591,15 +573,11 @@ export function OverviewCharts() {
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "8px",
                   }}
-                  formatter={(value: number) => [`${value.toFixed(1).replace(".", ",")}%`, "Percentual (base 129)"]}
+                  formatter={(value: number) => [`${value.toFixed(1).replace(".", ",")}%`, "Percentual"]}
                 />
                 <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-
-          <div className="mt-2 text-xs text-muted-foreground">
-            Base de cálculo fixa: {NEEDS_TOTAL.toLocaleString("pt-BR")}
           </div>
         </div>
       )}
