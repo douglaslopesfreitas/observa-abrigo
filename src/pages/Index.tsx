@@ -4,7 +4,7 @@ import { KPICards } from "@/components/dashboard/KPICards";
 import { OverviewCharts } from "@/components/dashboard/OverviewCharts";
 import { FilterSection } from "@/components/dashboard/FilterSection";
 import type { FilterState } from "@/types/dashboard";
-import { getCatalogo, getIndicadorSheet } from "@/services/sheetsApi";
+import { getCatalogo, getIndicadorSheet, getIndicador } from "@/services/sheetsApi";
 import { IndicatorResults } from "@/components/dashboard/IndicatorResults";
 import { LastUpdated } from "@/components/dashboard/LastUpdated";
 
@@ -443,7 +443,7 @@ export default function Index() {
       });
   }, []);
 
-  // 4) ✅ KPI (educacao): Lógica corrigida para somar total da aba educacao
+  // 4) KPI (educacao): Lógica corrigida para somar total da aba educacao
   useEffect(() => {
     getIndicadorSheet("educacao")
       .then((d) => {
@@ -521,9 +521,9 @@ export default function Index() {
       });
   }, []);
 
-  // 5) KPI Vítimas de violência: % "Sim" / total (aba violencia)
+  // 5) ✅ KPI Vítimas de violência: Busca especificamente a tabela do "violencia_s" (G1:L)
   useEffect(() => {
-    getIndicadorSheet("violencia")
+    getIndicador("violencia!G1:L")
       .then((d) => {
         const values: any[][] = d.values || [];
         if (values.length < 2) {
@@ -537,7 +537,6 @@ export default function Index() {
         const idxTerr = headersKey.indexOf("territorio");
         const idxData = headersKey.indexOf("data");
         const idxVal = headersKey.indexOf("valor");
-        const idxId = headersKey.indexOf("indicador_id"); // Buscamos a coluna de ID
         const idxCat = findCategoryColumn(headersKey);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
@@ -555,16 +554,11 @@ export default function Index() {
             data: rawDate || lastDateAny,
             resposta: String(r[idxCat] ?? "").trim(),
             valor: parseNumberOrNull(r[idxVal]),
-            indicador_id: idxId >= 0 ? String(r[idxId] ?? "").trim() : undefined
           };
         });
 
-        // FILTRO: Apenas RJ e Apenas o indicador "violencia_s"
-        const filteredRows = parsed.filter((x) => 
-          isRJ(x.territorio) && x.indicador_id === "violencia_s"
-        );
-
-        const dates = Array.from(new Set(filteredRows.map((x) => x.data).filter(Boolean))).sort();
+        const rj = parsed.filter((x) => isRJ(x.territorio));
+        const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
 
         if (!last) {
@@ -572,13 +566,13 @@ export default function Index() {
           return;
         }
 
-        const rowsLast = filteredRows.filter((x) => x.data === last);
+        const rowsLast = rj.filter((x) => x.data === last);
         setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim"));
       })
       .catch(() => setKpiVitimasViolenciaPct(null));
   }, []);
 
-  // 6) ✅ KPI (Psicologia) - Corrigido para ler especificamente da aba "saude"
+  // 6) ✅ KPI (Psicologia) - Corrigido para ler especificamente da aba "saude" e buscar "Sem"
   useEffect(() => {
     getIndicadorSheet("saude")
       .then((d) => {
@@ -594,9 +588,8 @@ export default function Index() {
         const idxTerr = headersNorm.indexOf("territorio");
         const idxData = headersNorm.indexOf("data");
         const idxVal = headersNorm.indexOf("valor");
-        // Busca a coluna de resposta de forma flexível (ex: "atendimento psicologico")
         let idxCat = -1;
-        const candidates = ["atendimento psicologico", "psicologia", "categoria", "resposta"];
+        const candidates = ["atendimento psicologico", "psicologia", "categoria"];
         for (const c of candidates) {
           const i = headersNorm.indexOf(normTxt(c));
           if (i >= 0) { idxCat = i; break; }
@@ -635,7 +628,7 @@ export default function Index() {
         const semRow = rowsLast.find(r => normTxt(r.resposta).includes("sem"));
         const semValor = semRow && typeof semRow.valor === "number" ? semRow.valor : 0;
 
-        // Denominador: Soma total da data (Com + Sem)
+        // Denominador: Soma total da data
         const total = rowsLast.reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
 
         if (total > 0) {
