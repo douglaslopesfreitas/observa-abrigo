@@ -15,13 +15,23 @@ import {
 } from "recharts";
 import { getIndicadorSheet } from "@/services/sheetsApi";
 
+// ✅ Paleta Rede Abrigo (primária primeiro)
+const PRIMARY_COLOR = "#359AD4";
 const CHART_COLORS = [
-  "hsl(215, 70%, 50%)",
-  "hsl(180, 50%, 50%)",
-  "hsl(35, 85%, 55%)",
-  "hsl(280, 45%, 55%)",
-  "hsl(150, 50%, 45%)",
-  "hsl(340, 60%, 55%)",
+  "#359AD4",
+  "#2676A0",
+  "#175070",
+  "#0A2E43",
+  "#02121E",
+  "#72C0F8",
+  "#C9E3FC",
+  "#FFCE19",
+  "#FFB114",
+  "#FA841E",
+  "#E67310",
+  "#9F5125",
+  "#F7EFBA",
+  "#FFE045",
 ];
 
 function EmptyState({ title }: { title: string }) {
@@ -57,22 +67,27 @@ function isRJ(territorio: string) {
 }
 
 function isFonteRedeAbrigo(fonte: unknown) {
-  // Você pediu “fonte da Rede Abrigo”. Aqui eu filtro pelo texto do print:
-  // "ALIA | Instituto Rede Abrigo"
   const f = normTxt(fonte);
   if (!f) return false;
   return f.includes("instituto rede abrigo") || f.includes("rede abrigo");
 }
 
+// ✅ Se a coluna fonte não existir ou estiver vazia, NÃO filtra (pra não zerar os gráficos)
+function shouldKeepByFonte(fonte: unknown, hasFonteColumn: boolean) {
+  if (!hasFonteColumn) return true;
+  const f = String(fonte ?? "").trim();
+  if (!f) return true; // se veio vazio, não filtra
+  return isFonteRedeAbrigo(f);
+}
+
 function formatDateBR(input: unknown) {
   const s = String(input ?? "").trim();
   if (!s) return "";
-  // aceita YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     const [y, m, d] = s.split("-");
     return `${d}/${m}/${y}`;
   }
-  return s; // se vier só "2025", mantém "2025"
+  return s;
 }
 
 function getYear(input: unknown) {
@@ -80,7 +95,6 @@ function getYear(input: unknown) {
   if (!s) return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.slice(0, 4);
   if (/^\d{4}$/.test(s)) return s;
-  // fallback: tenta achar 4 dígitos
   const m = s.match(/\b\d{4}\b/);
   return m ? m[0] : s;
 }
@@ -102,33 +116,24 @@ function detectCategoryIndex(headersNorm: string[], candidates: string[]) {
 }
 
 function computeTotalForDate(rows: RowParsed[], date: string): number {
-  // tenta achar linha de total
   const totalRow = rows.find((r) => {
     const c = normTxt(r.categoria);
     return r.data === date && (c.includes("todos") || c.includes("em todos") || c === "total");
   });
   if (totalRow && typeof totalRow.valor === "number") return totalRow.valor;
 
-  // senão soma tudo menos totais
   return rows
     .filter((r) => r.data === date && r.categoria && !normTxt(r.categoria).includes("todos"))
     .reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
 }
 
 export function OverviewCharts() {
-  // 1) Evolução (acolhidos)
   const [evolutionData, setEvolutionData] = useState<Array<{ name: string; value: number }>>([]);
-
-  // 2) Faixa etária (faixa-etaria)
   const [ageData, setAgeData] = useState<Array<{ name: string; value: number }>>([]);
-
-  // 3) Raça (raca)
   const [racaData, setRacaData] = useState<Array<{ name: string; value: number }>>([]);
-
-  // 4) Doações / maiores necessidades (doacao)
   const [needsData, setNeedsData] = useState<Array<{ name: string; value: number }>>([]);
 
-  // ====== Evolução do acolhimento (puxa da aba acolhidos) ======
+  // ===== Evolução do acolhimento (aba acolhidos) =====
   useEffect(() => {
     getIndicadorSheet("acolhidos")
       .then((d) => {
@@ -145,17 +150,17 @@ export function OverviewCharts() {
         const idxData = headersNorm.indexOf("data");
         const idxVal = headersNorm.indexOf("valor");
 
-        // pode ser modalidade/categoria
         let idxCat = headersNorm.indexOf("categoria");
         if (idxCat < 0) idxCat = headersNorm.indexOf("modalidade");
 
-        // fonte é opcional aqui (muita aba de acolhidos não tem)
         const idxFonte = headersNorm.indexOf("fonte");
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
           setEvolutionData([]);
           return;
         }
+
+        const hasFonteColumn = idxFonte >= 0;
 
         let lastDateAny = "";
         const parsed: RowParsed[] = body.map((r) => {
@@ -167,7 +172,7 @@ export function OverviewCharts() {
             data: rawDate || lastDateAny,
             categoria: String(r[idxCat] ?? "").trim(),
             valor: parseNumberOrNull(r[idxVal]),
-            fonte: idxFonte >= 0 ? String(r[idxFonte] ?? "").trim() : "",
+            fonte: hasFonteColumn ? String(r[idxFonte] ?? "").trim() : "",
           };
         });
 
@@ -183,7 +188,7 @@ export function OverviewCharts() {
       .catch(() => setEvolutionData([]));
   }, []);
 
-  // ====== Faixa etária (puxa da aba faixa-etaria, filtra fonte Rede Abrigo) ======
+  // ===== Faixa etária (aba faixa-etaria) =====
   useEffect(() => {
     getIndicadorSheet("faixa-etaria")
       .then((d) => {
@@ -201,7 +206,6 @@ export function OverviewCharts() {
         const idxVal = headersNorm.indexOf("valor");
         const idxFonte = headersNorm.indexOf("fonte");
 
-        // tenta achar a coluna de faixa
         const idxCat = detectCategoryIndex(headersNorm, [
           "categoria",
           "faixa_etaria",
@@ -217,6 +221,8 @@ export function OverviewCharts() {
           return;
         }
 
+        const hasFonteColumn = idxFonte >= 0;
+
         let lastDateAny = "";
         const parsed: RowParsed[] = body.map((r) => {
           const rawDate = String(r[idxData] ?? "").trim();
@@ -227,13 +233,13 @@ export function OverviewCharts() {
             data: rawDate || lastDateAny,
             categoria: String(r[idxCat] ?? "").trim(),
             valor: parseNumberOrNull(r[idxVal]),
-            fonte: idxFonte >= 0 ? String(r[idxFonte] ?? "").trim() : "",
+            fonte: hasFonteColumn ? String(r[idxFonte] ?? "").trim() : "",
           };
         });
 
         const filtered = parsed
           .filter((x) => isRJ(x.territorio))
-          .filter((x) => (idxFonte >= 0 ? isFonteRedeAbrigo(x.fonte) : true));
+          .filter((x) => shouldKeepByFonte(x.fonte, hasFonteColumn));
 
         const dates = Array.from(new Set(filtered.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
@@ -254,7 +260,7 @@ export function OverviewCharts() {
       .catch(() => setAgeData([]));
   }, []);
 
-  // ====== Raça (puxa da aba raca, filtra fonte Rede Abrigo) ======
+  // ===== Recorte racial (aba raca) =====
   useEffect(() => {
     getIndicadorSheet("raca")
       .then((d) => {
@@ -272,13 +278,14 @@ export function OverviewCharts() {
         const idxVal = headersNorm.indexOf("valor");
         const idxFonte = headersNorm.indexOf("fonte");
 
-        // na sua planilha a coluna é "raça" (vira "raca" na normalização)
         const idxCat = detectCategoryIndex(headersNorm, ["raca", "raça", "categoria"]);
 
         if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
           setRacaData([]);
           return;
         }
+
+        const hasFonteColumn = idxFonte >= 0;
 
         let lastDateAny = "";
         const parsed: RowParsed[] = body.map((r) => {
@@ -290,13 +297,13 @@ export function OverviewCharts() {
             data: rawDate || lastDateAny,
             categoria: String(r[idxCat] ?? "").trim(),
             valor: parseNumberOrNull(r[idxVal]),
-            fonte: idxFonte >= 0 ? String(r[idxFonte] ?? "").trim() : "",
+            fonte: hasFonteColumn ? String(r[idxFonte] ?? "").trim() : "",
           };
         });
 
         const filtered = parsed
           .filter((x) => isRJ(x.territorio))
-          .filter((x) => (idxFonte >= 0 ? isFonteRedeAbrigo(x.fonte) : true));
+          .filter((x) => shouldKeepByFonte(x.fonte, hasFonteColumn));
 
         const dates = Array.from(new Set(filtered.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
@@ -318,7 +325,7 @@ export function OverviewCharts() {
       .catch(() => setRacaData([]));
   }, []);
 
-  // ====== Doações / maiores necessidades (puxa da aba doacao, filtra fonte Rede Abrigo) ======
+  // ===== Doações / maiores necessidades (aba doacao) =====
   useEffect(() => {
     getIndicadorSheet("doacao")
       .then((d) => {
@@ -336,7 +343,6 @@ export function OverviewCharts() {
         const idxVal = headersNorm.indexOf("valor");
         const idxFonte = headersNorm.indexOf("fonte");
 
-        // tenta achar “categoria”/“necessidade”/“doacao”
         const idxCat = detectCategoryIndex(headersNorm, [
           "categoria",
           "necessidade",
@@ -353,6 +359,8 @@ export function OverviewCharts() {
           return;
         }
 
+        const hasFonteColumn = idxFonte >= 0;
+
         let lastDateAny = "";
         const parsed: RowParsed[] = body.map((r) => {
           const rawDate = String(r[idxData] ?? "").trim();
@@ -363,13 +371,13 @@ export function OverviewCharts() {
             data: rawDate || lastDateAny,
             categoria: String(r[idxCat] ?? "").trim(),
             valor: parseNumberOrNull(r[idxVal]),
-            fonte: idxFonte >= 0 ? String(r[idxFonte] ?? "").trim() : "",
+            fonte: hasFonteColumn ? String(r[idxFonte] ?? "").trim() : "",
           };
         });
 
         const filtered = parsed
           .filter((x) => isRJ(x.territorio))
-          .filter((x) => (idxFonte >= 0 ? isFonteRedeAbrigo(x.fonte) : true));
+          .filter((x) => shouldKeepByFonte(x.fonte, hasFonteColumn));
 
         const dates = Array.from(new Set(filtered.map((x) => x.data).filter(Boolean))).sort();
         const last = dates[dates.length - 1];
@@ -391,14 +399,13 @@ export function OverviewCharts() {
       .catch(() => setNeedsData([]));
   }, []);
 
-  // Labels de eixo X da evolução: mostra só o ano
   const evolutionTickFormatter = useMemo(() => {
     return (v: any) => getYear(v);
   }, []);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Evolução (eixo com ano, tooltip com data completa) */}
+      {/* Evolução */}
       {evolutionData.length === 0 ? (
         <EmptyState title="Evolução do Acolhimento" />
       ) : (
@@ -432,9 +439,9 @@ export function OverviewCharts() {
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke={CHART_COLORS[0]}
+                  stroke={PRIMARY_COLOR}
                   strokeWidth={2}
-                  dot={{ fill: CHART_COLORS[0], strokeWidth: 2, r: 4 }}
+                  dot={{ fill: PRIMARY_COLOR, strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 6, strokeWidth: 0 }}
                 />
               </LineChart>
@@ -443,7 +450,7 @@ export function OverviewCharts() {
         </div>
       )}
 
-      {/* Distribuição por Faixa Etária (agora do Sheets) */}
+      {/* Faixa etária */}
       {ageData.length === 0 ? (
         <EmptyState title="Distribuição por Faixa Etária" />
       ) : (
@@ -474,14 +481,14 @@ export function OverviewCharts() {
                   }}
                   formatter={(value: number) => [value.toLocaleString("pt-BR"), "Acolhidos"]}
                 />
-                <Bar dataKey="value" fill={CHART_COLORS[1]} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="value" fill={PRIMARY_COLOR} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
       )}
 
-      {/* Recorte racial (substitui "Unidades por Estado") */}
+      {/* Recorte racial */}
       {racaData.length === 0 ? (
         <EmptyState title="Recorte racial" />
       ) : (
@@ -519,7 +526,7 @@ export function OverviewCharts() {
         </div>
       )}
 
-      {/* Doações / Maiores necessidades (substitui "Tipos de unidade") */}
+      {/* Doações / maiores necessidades */}
       {needsData.length === 0 ? (
         <EmptyState title="Doações e maiores necessidades" />
       ) : (
