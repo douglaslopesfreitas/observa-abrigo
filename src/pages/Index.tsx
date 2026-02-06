@@ -31,7 +31,7 @@ function parseNumberOrNull(v: unknown): number | null {
   if (!s) return null;
 
   // aceita "12,3" e "12.3"
-  const cleaned = s.replace(/\./g, "").replace(",", "."); // remove milhar com "." e troca "," por "."
+  const cleaned = s.replace(/\./g, "").replace(",", ".");
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
 }
@@ -133,6 +133,52 @@ function isRJ(territorio: string) {
   return t === "rj" || t.includes("rio de janeiro");
 }
 
+// ===== KPI SIM/NÃO genérico (violência e psicologia) =====
+type YnRow = {
+  territorio: string;
+  data: string;
+  resposta: string;
+  valor: number | null;
+};
+
+function normalizeHeaderKey(h: unknown): string {
+  return String(h ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/[^\w]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function findCategoryColumn(headersKey: string[]) {
+  const blocked = new Set(["territorio", "data", "valor", "fonte"]);
+  for (let i = 0; i < headersKey.length; i++) {
+    const h = headersKey[i];
+    if (!h) continue;
+    if (blocked.has(h)) continue;
+    return i;
+  }
+  return -1;
+}
+
+function calcPctFromYesNo(rows: YnRow[], target: "sim" | "nao") {
+  const total = rows.reduce((acc, r) => acc + (typeof r.valor === "number" ? r.valor : 0), 0);
+  if (!total || total <= 0) return null;
+
+  const match = rows.find((r) => {
+    const t = normTxt(r.resposta);
+    if (target === "sim") return t === "sim";
+    return t === "nao" || t === "não";
+  });
+
+  const v = match && typeof match.valor === "number" ? match.valor : 0;
+  const pct = (v / total) * 100;
+  return Number.isFinite(pct) ? pct : null;
+}
+
 export default function Index() {
   const [filters, setFilters] = useState<FilterState>({
     area: null,
@@ -153,6 +199,10 @@ export default function Index() {
 
   // ✅ percentual de NÃO alfabetizados (mostra só isso no card)
   const [kpiNaoAlfabetizadosPct, setKpiNaoAlfabetizadosPct] = useState<number | null>(null);
+
+  // ✅ NOVOS KPIs
+  const [kpiVitimasViolenciaPct, setKpiVitimasViolenciaPct] = useState<number | null>(null);
+  const [kpiSemPsicoPct, setKpiSemPsicoPct] = useState<number | null>(null);
 
   const handleFilterChange = useCallback((newFilters: FilterState) => {
     setFilters(newFilters);
@@ -388,7 +438,7 @@ export default function Index() {
       });
   }, []);
 
-  // ✅ 4) KPI (alfabetizacao): calcula % não alfabetizados no RJ no último período
+  // 4) KPI (alfabetizacao): calcula % não alfabetizados no RJ no último período
   useEffect(() => {
     getIndicadorSheet("alfabetizacao")
       .then((d) => {
@@ -406,8 +456,7 @@ export default function Index() {
         const idxData = headersNorm.indexOf("data");
         const idxValor = headersNorm.indexOf("valor");
 
-        // tenta vários nomes pra coluna de categoria
-        const catCandidates = ["categoria", "alfabetizacao", "situacao", "situação", "condicao", "condição"];
+        const catCandidates = ["categoria", "alfabetizacao", "alfabetização", "situacao", "situação"];
         let idxCategoria = -1;
         for (const c of catCandidates) {
           const i = headersNorm.indexOf(normTxt(c));
@@ -446,10 +495,10 @@ export default function Index() {
 
         const rowsLast = rj.filter((x) => x.data === last);
 
-       const naoRow = rowsLast.find((r) => {
-  const c = normTxt(r.categoria);
-  return c === "nao alfabetizado" || (c.includes("nao") && c.includes("alfabet"));
-});
+        const naoRow = rowsLast.find((r) => {
+          const c = normTxt(r.categoria);
+          return c.includes("nao") && c.includes("alfabet");
+        });
 
         const nao = naoRow && typeof naoRow.valor === "number" ? naoRow.valor : null;
 
@@ -470,6 +519,111 @@ export default function Index() {
       });
   }, []);
 
+  // ✅ 5) KPI Vítimas de violência: % "Sim" / total (aba violencia)
+  useEffect(() => {
+    getIndicadorSheet("violencia")
+      .then((d) => {
+        const values: any[][] = d.values || [];
+        if (values.length < 2) {
+          setKpiVitimasViolenciaPct(null);
+          return;
+        }
+
+        const headersKey = (values[0] || []).map(normalizeHeaderKey);
+        const body = values.slice(1);
+
+        const idxTerr = headersKey.indexOf("territorio");
+        const idxData = headersKey.indexOf("data");
+        const idxVal = headersKey.indexOf("valor");
+        const idxCat = findCategoryColumn(headersKey);
+
+        if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) {
+          setKpiVitimasViolenciaPct(null);
+          return;
+        }
+
+        let lastDateAny = "";
+        const parsed: YnRow[] = body.map((r) => {
+          const rawDate = String(r[idxData] ?? "").trim();
+          if (rawDate) lastDateAny = rawDate;
+
+          return {
+            territorio: String(r[idxTerr] ?? "").trim(),
+            data: rawDate || lastDateAny,
+            resposta: String(r[idxCat] ?? "").trim(),
+            valor: parseNumberOrNull(r[idxVal]),
+          };
+        });
+
+        const rj = parsed.filter((x) => isRJ(x.territorio));
+        const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
+        const last = dates[dates.length - 1];
+
+        if (!last) {
+          setKpiVitimasViolenciaPct(null);
+          return;
+        }
+
+        const rowsLast = rj.filter((x) => x.data === last);
+        setKpiVitimasViolenciaPct(calcPctFromYesNo(rowsLast, "sim"));
+      })
+      .catch(() => setKpiVitimasViolenciaPct(null));
+  }, []);
+
+  // ✅ 6) KPI Sem acompanhamento psicológico individualizado: % "Não" / total
+  // tenta primeiro uma aba dedicada; se não existir, tenta saude
+  useEffect(() => {
+    const trySheets = async () => {
+      const candidates = ["psicologico", "psicologia", "saude"];
+      for (const sheet of candidates) {
+        try {
+          const d = await getIndicadorSheet(sheet);
+          const values: any[][] = d.values || [];
+          if (values.length < 2) continue;
+
+          const headersKey = (values[0] || []).map(normalizeHeaderKey);
+          const body = values.slice(1);
+
+          const idxTerr = headersKey.indexOf("territorio");
+          const idxData = headersKey.indexOf("data");
+          const idxVal = headersKey.indexOf("valor");
+          const idxCat = findCategoryColumn(headersKey);
+
+          if (idxTerr < 0 || idxData < 0 || idxVal < 0 || idxCat < 0) continue;
+
+          let lastDateAny = "";
+          const parsed: YnRow[] = body.map((r) => {
+            const rawDate = String(r[idxData] ?? "").trim();
+            if (rawDate) lastDateAny = rawDate;
+
+            return {
+              territorio: String(r[idxTerr] ?? "").trim(),
+              data: rawDate || lastDateAny,
+              resposta: String(r[idxCat] ?? "").trim(),
+              valor: parseNumberOrNull(r[idxVal]),
+            };
+          });
+
+          const rj = parsed.filter((x) => isRJ(x.territorio));
+          const dates = Array.from(new Set(rj.map((x) => x.data).filter(Boolean))).sort();
+          const last = dates[dates.length - 1];
+
+          if (!last) continue;
+
+          const rowsLast = rj.filter((x) => x.data === last);
+          setKpiSemPsicoPct(calcPctFromYesNo(rowsLast, "nao"));
+          return;
+        } catch {
+          // tenta a próxima aba
+        }
+      }
+
+      setKpiSemPsicoPct(null);
+    };
+
+    trySheets();
+  }, []);
+
   const KPI_BASE = [
     {
       id: "total_acolhidos",
@@ -487,7 +641,20 @@ export default function Index() {
       id: "nao_alfabetizados",
       label: "Não alfabetizados",
       value: null,
-      unit: "%",
+      unit: "",
+    },
+    // ✅ NOVOS CARDS
+    {
+      id: "vitimas_violencia",
+      label: "Vítimas de violência",
+      value: null,
+      unit: "",
+    },
+    {
+      id: "sem_psico",
+      label: "Sem acompanhamento psicológico individualizado",
+      value: null,
+      unit: "",
     },
     {
       id: "tempo_medio",
@@ -523,10 +690,34 @@ export default function Index() {
 
         return {
           ...kpi,
-         value: typeof pct === "number" ? pct : 0,
-          details: [
-  "Entre crianças e adolescentes acolhidos que já deveriam estar alfabetizados (8+)",
-],
+          value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
+          details: ["Entre crianças e adolescentes acolhidos que já deveriam estar alfabetizados (8+)"],
+        };
+      }
+
+      if (kpi.id === "vitimas_violencia") {
+        const pct =
+          typeof kpiVitimasViolenciaPct === "number"
+            ? Math.round(kpiVitimasViolenciaPct * 10) / 10
+            : null;
+
+        return {
+          ...kpi,
+          value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
+          details: [],
+        };
+      }
+
+      if (kpi.id === "sem_psico") {
+        const pct =
+          typeof kpiSemPsicoPct === "number"
+            ? Math.round(kpiSemPsicoPct * 10) / 10
+            : null;
+
+        return {
+          ...kpi,
+          value: pct != null ? `${pct.toLocaleString("pt-BR")}%` : null,
+          details: [],
         };
       }
 
@@ -539,6 +730,8 @@ export default function Index() {
     kpiUnidades,
     kpiUnidadesDetails,
     kpiNaoAlfabetizadosPct,
+    kpiVitimasViolenciaPct,
+    kpiSemPsicoPct,
   ]);
 
   const hasActiveFilters = Boolean(filters.area || filters.indicador);
