@@ -70,14 +70,14 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
   }, [catalog, filters.indicador]);
 
   const territorios = useMemo<string[]>(() => {
-       const rows = catalog.filter((r) => normStr(r.indicador_id) === filters.indicador);
+    if (!filters.indicador) return [];
+    const rows = catalog.filter((r) => normStr(r.indicador_id) === filters.indicador);
     const rows2 = filters.fonte
       ? rows.filter((r) => normStr(r.fonte) === filters.fonte)
       : rows;
 
-  const all = uniq(
-  rows2.map((r) => normStr((r as any).territorio_nome))
-);
+    const fromCatalog = uniq(rows2.map((r) => normStr((r as any).territorio_nome)));
+    const all = fromCatalog.length ? fromCatalog : ["RJ", "Rio de Janeiro"];
 
     if (!territorioSearch) return all;
     const q = territorioSearch.toLowerCase();
