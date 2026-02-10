@@ -70,8 +70,7 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
   }, [catalog, filters.indicador]);
 
   const territorios = useMemo<string[]>(() => {
-    if (!filters.indicador) return [];
-    const rows = catalog.filter((r) => normStr(r.indicador_id) === filters.indicador);
+       const rows = catalog.filter((r) => normStr(r.indicador_id) === filters.indicador);
     const rows2 = filters.fonte
       ? rows.filter((r) => normStr(r.fonte) === filters.fonte)
       : rows;
