@@ -69,27 +69,19 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
     return uniq(rows.map((r) => normStr(r.fonte)));
   }, [catalog, filters.indicador]);
 
-const territorios = useMemo<string[]>(() => {
-    // 1. Se não tiver indicador selecionado, retorna lista vazia
+  const territorios = useMemo<string[]>(() => {
     if (!filters.indicador) return [];
-
-    // 2. Filtra as linhas do catálogo pelo indicador
     const rows = catalog.filter((r) => normStr(r.indicador_id) === filters.indicador);
-    
-    // 3. Filtra pela fonte (se o filtro de fonte existir)
     const rows2 = filters.fonte
       ? rows.filter((r) => normStr(r.fonte) === filters.fonte)
       : rows;
 
-    // 4. Pega apenas os nomes reais dos territórios (removendo duplicados)
-    // Removi o (as any) pois você já definiu territorio_nome no tipo CatalogRow
-    const fromCatalog = uniq(rows2.map((r) => normStr(r.territorio_nome)));
+    const fromCatalog = uniq(rows2.map((r) => normStr((r as any).territorio_nome)));
+    const all = fromCatalog.length ? fromCatalog : ["RJ", "Rio de Janeiro"];
 
-    // 5. Aplica a busca (search) sobre os dados reais
-    if (!territorioSearch) return fromCatalog;
-    
+    if (!territorioSearch) return all;
     const q = territorioSearch.toLowerCase();
-    return fromCatalog.filter((t) => t.toLowerCase().includes(q));
+    return all.filter((t) => t.toLowerCase().includes(q));
   }, [catalog, filters.indicador, filters.fonte, territorioSearch]);
 
   // Efeitos de Auto-seleção
