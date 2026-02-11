@@ -346,13 +346,15 @@ export function IndicatorResults({
       .finally(() => setLoading(false));
   }, [meta?.sheet, meta?.range]);
 
-  const territorioSel = filters.territorio ?? null;
+  // ✅ 1. Mudança aqui: Garante que se não houver filtro, não assume nada
+  const territorioSel = filters.territorio || null;
 
 
   const filtered = useMemo(() => {
     
   let base = rows;
 
+  // Só filtra se houver um território selecionado de fato
   if (territorioSel) {
     base = base.filter((r) => r.territorio === territorioSel);
   }
@@ -382,7 +384,7 @@ const dates = useMemo(() => {
     return Array.from(set);
   }, [filtered]);
 
-  // ✅ 2. CORREÇÃO DA LÓGICA DO BANNER (Calculando total manualmente se necessário)
+  // ===== Fotografia atual =====
   const fotografiaAtual = useMemo(() => {
     if (!lastDate) return null;
 
@@ -403,7 +405,6 @@ const dates = useMemo(() => {
     const categoriesFound = Array.from(byMod.entries()).filter(([, v]) => v > 0);
     const sumOfCategories = categoriesFound.reduce((acc, [, v]) => acc + v, 0);
     
-    // O divisor/total do banner será a linha "Total" ou a soma das partes
     const finalTotal = (totalRow && typeof totalRow.valor === "number") 
       ? totalRow.valor 
       : sumOfCategories;
@@ -487,7 +488,14 @@ const dates = useMemo(() => {
     return { data: dates.map((d) => byDate.get(d)).filter(Boolean), keys };
   }, [dates, filtered, modalities]);
 
-  if (!filters.indicador) return null;
+  // ✅ 2. Trava Principal: Se não escolheu indicador ou território, não mostra nada ainda
+  if (!filters.indicador || !filters.territorio) {
+    return (
+      <div className="h-60 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-xl gap-2">
+        <p>Selecione um território para visualizar os dados</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -529,21 +537,21 @@ const dates = useMemo(() => {
         {view === "foto" && (
           <div className="mt-4">
            <ChartRenderer
-  key={`foto-${filters.indicador}`}
-  perfil={
-    meta?.perfil === "padrao" || meta?.tipo === "quantidade"
-      ? "padrao"
-      : (meta?.perfil as any)
-  }
-  data={fotografiaAtual?.fotoData || []}
-  unidade={meta?.perfil === "barras_horizontais_percentual" ? "%" : meta?.unidade}
-  formatDateBR={formatDateBR}
-  showBanner={
-    meta?.tipo === "quantidade" ||
-    meta?.perfil === "padrao"
-  }
-  totalValue={fotografiaAtual?.total}
-/>
+              key={`foto-${filters.indicador}`}
+              perfil={
+                meta?.perfil === "padrao" || meta?.tipo === "quantidade"
+                  ? "padrao"
+                  : (meta?.perfil as any)
+              }
+              data={fotografiaAtual?.fotoData || []}
+              unidade={meta?.perfil === "barras_horizontais_percentual" ? "%" : meta?.unidade}
+              formatDateBR={formatDateBR}
+              showBanner={
+                meta?.tipo === "quantidade" ||
+                meta?.perfil === "padrao"
+              }
+              totalValue={fotografiaAtual?.total}
+            />
 
 
             <div className="mt-3 space-y-1">
@@ -575,14 +583,13 @@ const dates = useMemo(() => {
               />
             </div>
             <div className="mt-3 space-y-1">
-  {meta?.nota_explicativa ? (
-    <div className="text-sm text-muted-foreground whitespace-pre-line">
-      {meta.nota_explicativa}
-    </div>
-  ) : null}
-
-  <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-</div>
+              {meta?.nota_explicativa ? (
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {meta.nota_explicativa}
+                </div>
+              ) : null}
+              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+            </div>
           </div>
         )}
 
