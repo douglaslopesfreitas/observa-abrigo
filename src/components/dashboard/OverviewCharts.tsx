@@ -66,7 +66,7 @@ function normTxt(s: unknown) {
 
 function isRJ(territorio: string) {
   const t = normTxt(territorio);
-  return t === "rj" || t.includes("rio de janeiro");
+  return t === "rj";
 }
 
 function isFonteRedeAbrigo(fonte: unknown) {
