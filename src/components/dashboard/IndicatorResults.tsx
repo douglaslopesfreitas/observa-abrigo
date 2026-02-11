@@ -609,7 +609,13 @@ const dates = useMemo(() => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-3">
+            <div className="mt-3 space-y-1">
+              {/* ✅ ADIÇÃO: Nota explicativa agora aparece aqui também */}
+              {meta?.nota_explicativa ? (
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {meta.nota_explicativa}
+                </div>
+              ) : null}
               <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
             </div>
           </div>
