@@ -344,19 +344,23 @@ export function IndicatorResults({
       .finally(() => setLoading(false));
   }, [meta?.sheet, meta?.range]);
 
-  const territorioSel = filters.territorio || "RJ";
+  const territorioSel = filters.territorio ?? null;
+
 
   const filtered = useMemo(() => {
-    const base = rows.filter((r) => r.territorio === territorioSel);
-    if (filters.fonte) return base.filter((r) => r.fonte === filters.fonte);
-    return base;
-  }, [rows, territorioSel, filters.fonte]);
+  let base = rows;
 
-  const dates = useMemo(() => {
-    const ds = Array.from(new Set(filtered.map((r) => r.data).filter(Boolean)));
-    ds.sort();
-    return ds;
-  }, [filtered]);
+  if (territorioSel) {
+    base = base.filter((r) => r.territorio === territorioSel);
+  }
+
+  if (filters.fonte) {
+    base = base.filter((r) => r.fonte === filters.fonte);
+  }
+
+  return base;
+}, [rows, territorioSel, filters.fonte]);
+
 
   const lastDate = dates[dates.length - 1] || "";
 
@@ -588,16 +592,9 @@ export function IndicatorResults({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-           <div className="mt-3 space-y-1">
-  {meta?.nota_explicativa ? (
-    <div className="text-sm text-muted-foreground whitespace-pre-line">
-      {meta.nota_explicativa}
-    </div>
-  ) : null}
-
-  <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-</div>
-
+            <div className="mt-3">
+              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+            </div>
           </div>
         )}
       </div>
