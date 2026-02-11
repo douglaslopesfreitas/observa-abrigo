@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import type { FilterState } from "@/types/dashboard";
+import { getIndicador } from "@/services/sheetsApi";
 
 type CatalogRow = {
   area?: string;
@@ -17,6 +18,8 @@ type CatalogRow = {
   indicador_nome?: string;
   fonte?: string;
   territorio?: string;
+  sheet?: string; // Adicionado para Opção B
+  range?: string; // Adicionado para Opção B
 };
 
 interface FilterSectionProps {
@@ -37,6 +40,9 @@ function uniq(arr: string[]) {
 
 export function FilterSection({ onFilterChange, filters, catalogo }: FilterSectionProps) {
   const [territorioSearch, setTerritorioSearch] = useState("");
+  // Estados para busca dinâmica de territórios
+  const [dynamicTerritorios, setDynamicTerritorios] = useState<string[]>([]);
+  const [loadingTerritorios, setLoadingTerritorios] = useState(false);
 
   const catalog = useMemo<CatalogRow[]>(
     () => (Array.isArray(catalogo) ? catalogo : []),
@@ -69,24 +75,53 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
     return uniq(rows.map((r) => normStr(r.fonte)));
   }, [catalog, filters.indicador]);
 
-const territorios = useMemo<string[]>(() => {
-  if (!filters.indicador) return [];
+  // Efeito para buscar territórios na aba de dados (Opção B)
+  useEffect(() => {
+    const meta = catalog.find((r) => normStr(r.indicador_id) === filters.indicador);
+    
+    if (!filters.indicador || !meta?.sheet || !meta?.range) {
+      setDynamicTerritorios([]);
+      return;
+    }
 
-  const rows = catalog.filter((r) => {
-    if (normStr(r.indicador_id) !== filters.indicador) return false;
-    if (filters.fonte && normStr(r.fonte) !== filters.fonte) return false;
-    if (filters.area && normStr(r.area) !== filters.area) return false;
-    return true;
-  });
+    setLoadingTerritorios(true);
+    const sheetRange = `${meta.sheet}!${meta.range}`;
 
-  const list = uniq(
-    rows
-      .map((r) => normStr(r.territorio))
-      .filter(Boolean)
-  );
+    getIndicador(sheetRange)
+      .then((resp) => {
+        const vals = resp.values || [];
+        if (vals.length < 2) {
+          setDynamicTerritorios([]);
+          return;
+        }
 
-  return list;
-}, [catalog, filters.indicador, filters.fonte, filters.area]);
+        const headers = (vals[0] || []).map((h) => String(h).trim().toLowerCase());
+        const idxTerr = headers.indexOf("territorio");
+
+        if (idxTerr >= 0) {
+          const body = vals.slice(1);
+          const list = uniq(body.map((r) => String(r[idxTerr] || "").trim()));
+          setDynamicTerritorios(list);
+        } else {
+          setDynamicTerritorios([]);
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar territórios dinamicamente:", err);
+        setDynamicTerritorios([]);
+      })
+      .finally(() => setLoadingTerritorios(false));
+  }, [filters.indicador, catalog]);
+
+  const territorios = useMemo<string[]>(() => {
+    if (!filters.indicador) return [];
+    
+    const list = dynamicTerritorios;
+
+    if (!territorioSearch) return list;
+    const q = territorioSearch.toLowerCase();
+    return list.filter((t) => t.toLowerCase().includes(q));
+  }, [dynamicTerritorios, territorioSearch, filters.indicador]);
 
 
     // Efeitos de Auto-seleção
@@ -106,14 +141,12 @@ const territorios = useMemo<string[]>(() => {
   }, [fontes, filters, onFilterChange]);
 
   useEffect(() => {
-  // Se só houver 1 território → seleciona automaticamente
   if (territorios.length === 1) {
     if (filters.territorio !== territorios[0]) {
       onFilterChange({ ...filters, territorio: territorios[0] });
     }
   }
 
-  // Se houver mais de 1 e o atual não estiver na lista → limpa
   if (
     territorios.length > 1 &&
     filters.territorio &&
@@ -164,9 +197,8 @@ const territorios = useMemo<string[]>(() => {
         <h2 className="font-semibold text-foreground">Explorar Indicadores</h2>
       </div>
 
-      {/* ✅ Grid de 12 colunas para controle fino dos tamanhos */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
-        {/* 1. ÁREA - 2 colunas */}
+        {/* 1. ÁREA */}
         <div className="lg:col-span-2">
           <label className="filter-label">Área</label>
           <Select value={filters.area || ""} onValueChange={handleAreaChange}>
@@ -183,7 +215,7 @@ const territorios = useMemo<string[]>(() => {
           </Select>
         </div>
 
-        {/* 2. INDICADOR - 3 colunas */}
+        {/* 2. INDICADOR */}
         <div className="lg:col-span-3">
           <label className="filter-label">Indicador</label>
           <Select
@@ -206,7 +238,7 @@ const territorios = useMemo<string[]>(() => {
           </Select>
         </div>
 
-        {/* 3. FONTE - 4 colunas (MAIOR) ✅ */}
+        {/* 3. FONTE */}
         <div className="lg:col-span-4">
           <label className="filter-label">Fonte</label>
           {showFonteFilter ? (
@@ -236,16 +268,22 @@ const territorios = useMemo<string[]>(() => {
           )}
         </div>
 
-        {/* 4. TERRITÓRIO - 2 colunas (menor) ✅ */}
+        {/* 4. TERRITÓRIO */}
         <div className="lg:col-span-2">
           <label className="filter-label">Território</label>
           <Select
             value={filters.territorio || ""}
             onValueChange={handleTerritorioChange}
-            disabled={!filters.indicador}
+            disabled={!filters.indicador || loadingTerritorios}
           >
             <SelectTrigger className="bg-background">
-              <SelectValue placeholder={!filters.indicador ? "Selecione o indicador" : "Selecione"} />
+              <SelectValue placeholder={
+                loadingTerritorios 
+                  ? "Carregando..." 
+                  : !filters.indicador 
+                    ? "Selecione o indicador" 
+                    : "Selecione"
+              } />
             </SelectTrigger>
             <SelectContent className="bg-popover z-50 max-h-64">
               <div className="px-2 py-1.5 sticky top-0 bg-popover">
@@ -268,7 +306,7 @@ const territorios = useMemo<string[]>(() => {
           </Select>
         </div>
 
-        {/* 5. BOTÃO LIMPAR - 1 coluna (alinhado ao final) ✅ */}
+        {/* 5. BOTÃO LIMPAR */}
         <div className="lg:col-span-1">
           <label className="filter-label opacity-0">Ações</label>
           {hasFilters && (
