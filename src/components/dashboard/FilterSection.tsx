@@ -131,32 +131,36 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
 
   useEffect(() => {
     if (fontes.length === 1 && filters.fonte !== fontes[0]) {
-      onFilterChange({ ...filters, fonte: fontes[0], territorio: null });
+      // ✅ Mudança: Mantemos o filters.territorio em vez de passar null, para não apagar o RJ do clique
+      onFilterChange({ ...filters, fonte: fontes[0], territorio: filters.territorio });
     }
     if (fontes.length > 1 && filters.fonte && !fontes.includes(filters.fonte)) {
-      onFilterChange({ ...filters, fonte: null, territorio: null });
+      onFilterChange({ ...filters, fonte: null, territorio: filters.territorio });
     }
   }, [fontes, filters, onFilterChange]);
 
-  // ✅ AJUSTE: Só seleciona automático se for EXATAMENTE 1.
-useEffect(() => {
-    // 1. Se ainda está carregando os dados da planilha, não mexe na seleção
+  // ✅ AJUSTE REFORÇADO: Gerencia o RJ e evita limpezas indesejadas
+  useEffect(() => {
     if (loadingTerritorios) return;
 
-    // 2. Se a lista de territórios estiver pronta
     if (territorios.length === 1) {
-      if (filters.territorio !== territorios[0]) {
+      // Se só tem 1 opção (ex: RJ), garante que ela esteja selecionada
+      if (normStr(filters.territorio).toLowerCase() !== normStr(territorios[0]).toLowerCase()) {
         onFilterChange({ ...filters, territorio: territorios[0] });
       }
     } 
-    // 3. Se tiver mais de um, só limpa se o que está selecionado (ex: RJ) 
-    // REALMENTE não existir na lista que acabou de vir da planilha
     else if (territorios.length > 1) {
-      if (filters.territorio && !territorios.includes(filters.territorio)) {
+      // Se tiver várias opções (RJ, Niterói...), verifica se o valor atual é válido na lista nova
+      const isCurrentValid = territorios.some(
+        (t) => t.toLowerCase() === normStr(filters.territorio).toLowerCase()
+      );
+
+      // SÓ limpa se o território atual NÃO existir na lista que veio da planilha
+      if (filters.territorio && !isCurrentValid) {
         onFilterChange({ ...filters, territorio: null });
       }
     }
-  }, [territorios, loadingTerritorios]);
+  }, [territorios, loadingTerritorios, filters.territorio]);
 
 
   // Handlers
@@ -172,7 +176,7 @@ useEffect(() => {
 
   const handleFonteChange = (value: string) => {
     setTerritorioSearch("");
-    onFilterChange({ ...filters, fonte: value, territorio: null });
+    onFilterChange({ ...filters, fonte: value, territorio: filters.territorio });
   };
 
   const handleTerritorioChange = (value: string) => {
