@@ -69,24 +69,27 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
     return uniq(rows.map((r) => normStr(r.fonte)));
   }, [catalog, filters.indicador]);
 
-  const territorios = useMemo<string[]>(() => {
-    if (!filters.indicador) return [];
-    const rows = catalog.filter((r) => normStr(r.indicador_id) === filters.indicador);
-    const rows2 = filters.fonte
-      ? rows.filter((r) => normStr(r.fonte) === filters.fonte)
-      : rows;
+const territorios = useMemo<string[]>(() => {
+  if (!filters.indicador) return [];
 
-    const fromCatalog = uniq(rows2.map((r) => normStr((r as any).territorio_nome)));
-const all = fromCatalog.length
-  ? fromCatalog
-  : uniq(rows2.map((r) => normStr((r as any).territorio_nome || ""))).filter(Boolean);
+  const rows = catalog.filter(
+    (r) => normStr(r.indicador_id) === filters.indicador
+  );
 
-    if (!territorioSearch) return all;
-    const q = territorioSearch.toLowerCase();
-    return all.filter((t) => t.toLowerCase().includes(q));
-  }, [catalog, filters.indicador, filters.fonte, territorioSearch]);
+  const rows2 = filters.fonte
+    ? rows.filter((r) => normStr(r.fonte) === filters.fonte)
+    : rows;
 
-  // Efeitos de Auto-seleção
+  const list = uniq(
+    rows2
+      .map((r) => normStr(r.territorio_nome))
+      .filter(Boolean)
+  );
+
+  return list;
+}, [catalog, filters.indicador, filters.fonte]);
+
+    // Efeitos de Auto-seleção
   useEffect(() => {
     if (indicadores.length === 1 && !filters.indicador) {
       onFilterChange({ ...filters, indicador: indicadores[0].id });
