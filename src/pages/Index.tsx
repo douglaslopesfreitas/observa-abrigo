@@ -225,7 +225,7 @@ export default function Index() {
       area: item?.area || null,
       indicador: finalId,
       fonte: null,
-      territorio: null,
+      territorio: "RJ",
     });
 
     setTimeout(() => {

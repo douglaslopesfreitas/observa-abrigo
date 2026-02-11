@@ -139,16 +139,19 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
   }, [fontes, filters, onFilterChange]);
 
   // ✅ AJUSTE: Só seleciona automático se for EXATAMENTE 1.
-  useEffect(() => {
+useEffect(() => {
+    // 1. Se ainda está carregando os dados da planilha, não mexe na seleção
     if (loadingTerritorios) return;
 
+    // 2. Se a lista de territórios estiver pronta
     if (territorios.length === 1) {
       if (filters.territorio !== territorios[0]) {
         onFilterChange({ ...filters, territorio: territorios[0] });
       }
-    } else if (territorios.length > 1) {
-      // Se houver mais de 1, não seleciona nada (mantém Selecione).
-      // Mas se o território atual não for mais válido para este indicador, limpa.
+    } 
+    // 3. Se tiver mais de um, só limpa se o que está selecionado (ex: RJ) 
+    // REALMENTE não existir na lista que acabou de vir da planilha
+    else if (territorios.length > 1) {
       if (filters.territorio && !territorios.includes(filters.territorio)) {
         onFilterChange({ ...filters, territorio: null });
       }
