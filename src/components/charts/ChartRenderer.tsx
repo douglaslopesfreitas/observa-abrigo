@@ -34,7 +34,7 @@ const CHART_COLORS = [
 const PRIMARY_COLOR = "#359AD4";
 
 interface ChartRendererProps {
-  perfil?: PerfilVisualizacao | "linha" | "barras_agrupadas" | "barras_horizontais_percentual";
+  perfil?: PerfilVisualizacao | "linha" | "barras_agrupadas" | "barras_horizontais_percentual" | "barras_horizontais";
   data: any[];
   keys?: string[];
   unidade?: string;
@@ -117,13 +117,13 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 1. Evolução Quantitativa (LINHA)
+  // ✅ 1. Evolução Quantitativa (LINHA) - AGORA COM BOLINHAS PREENCHIDAS
   if (perfil === "linha") {
     return (
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
             <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={formatDateBR} />
             <YAxis tick={{ fontSize: 12 }} />
             <Tooltip 
@@ -134,8 +134,10 @@ export function ChartRenderer({
               type="monotone" 
               dataKey="value" 
               stroke={PRIMARY_COLOR} 
-              strokeWidth={2} 
-              dot={{ r: 4 }} 
+              strokeWidth={3} 
+              // ✅ Bolinha preenchida com borda branca para destaque
+              dot={{ r: 5, fill: PRIMARY_COLOR, stroke: "#fff", strokeWidth: 2 }}
+              activeDot={{ r: 7, strokeWidth: 0 }}
               isAnimationActive={true} 
               animationDuration={1500}
             />
@@ -240,21 +242,41 @@ export function ChartRenderer({
     );
   }
 
-  // ✅ 4. PERFIL BARRAS HORIZONTAIS PERCENTUAIS (Novo perfil para doações/outros)
-  if (perfil === "barras_horizontais_percentual") {
+  // ✅ 4. PERFIL BARRAS HORIZONTAIS (Percentual ou Quantitativo)
+  if (perfil === "barras_horizontais_percentual" || perfil === "barras_horizontais") {
+    const isPct = perfil === "barras_horizontais_percentual";
     return (
       <div className="h-[500px] w-full mt-4">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ left: 40, right: 60 }}>
+          <BarChart 
+            data={data} 
+            layout="vertical" 
+            margin={{ left: 20, right: 60, top: 10, bottom: 10 }}
+          >
             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
-            <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 12 }} />
-            <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 11 }} interval={0} />
-            <Tooltip content={<SimpleTooltip unidade="%" />} cursor={{ fill: "hsl(var(--accent))", opacity: 0.1 }} />
+            <XAxis 
+              type="number" 
+              domain={isPct ? [0, 100] : [0, 'auto']} 
+              tickFormatter={(v) => isPct ? `${v}%` : v.toLocaleString('pt-BR')} 
+              tick={{ fontSize: 12 }} 
+            />
+            <YAxis 
+              type="category" 
+              dataKey="name" 
+              width={160} // Aumentado para nomes de categorias longas
+              tick={{ fontSize: 11 }} 
+              interval={0} 
+            />
+            <Tooltip 
+              content={<SimpleTooltip unidade={isPct ? "%" : unidade} />} 
+              cursor={{ fill: "hsl(var(--accent))", opacity: 0.1 }} 
+            />
             <Bar 
               dataKey="value" 
               isAnimationActive={true} 
               animationDuration={1500} 
-              radius={[0, 4, 4, 0]} // ✅ Arredonda apenas a ponta direita
+              radius={[0, 4, 4, 0]} 
+              barSize={25}
             >
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
