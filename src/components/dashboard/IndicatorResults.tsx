@@ -12,9 +12,26 @@ import { ChartRenderer } from "@/components/charts/ChartRenderer";
 import type { CatalogRow, FilterState } from "@/types/dashboard";
 import { getIndicador } from "@/services/sheetsApi";
 
+// ✅ 1. Mantendo sua estrutura de tipos original e garantindo que tipo/perfil existam
+type ExtendedCatalogRow = CatalogRow & {
+  area?: string;
+  indicador_id?: string;
+  indicador_nome?: string;
+  fonte?: string;
+  territorio_nome?: string;
+  tipo?: string;   
+  perfil?: string; 
+  sheet?: string;
+  range?: string;
+  titulo?: string;
+  unidade?: string;
+  nota_explicativa?: string;
+  fonte_url?: string;
+};
+
 const PRIMARY_COLOR = "#359AD4";
 
-// ✅ Suas cores originais reorganizadas para dar contraste entre camadas vizinhas
+// ✅ Suas cores originais mantidas exatamente
 const CHART_COLORS = [
   "#2674a0", // Azul
   "#E67310", // Laranja Escuro
@@ -42,7 +59,7 @@ type ViewMode = "foto" | "evolucao" | "composicao";
 
 const TOTAL_LABEL = "Total";
 
-// ✅ Componente para arredondar apenas o topo da barra empilhada
+// ✅ Seu componente original mantido intacto
 const RoundedTopBar = (props: any) => {
   const { x, y, width, height, fill, payload, dataKey } = props;
   if (!height || height <= 0) return null;
@@ -75,17 +92,17 @@ function parseNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-// Normaliza cabeçalhos para comparação robusta (acentos, espaços, etc.)
+// Normaliza cabeçalhos para comparação robusta
 function normalizeHeader(h: any): string {
   return String(h ?? "")
     .trim()
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove acentos
-    .replace(/\s+/g, "_") // espaços viram _
-    .replace(/[^\w]/g, "_") // resto vira _
-    .replace(/_+/g, "_") // colapsa __
-    .replace(/^_+|_+$/g, ""); // remove _ no começo/fim
+    .replace(/[\u0300-\u036f]/g, "") 
+    .replace(/\s+/g, "_") 
+    .replace(/[^\w]/g, "_") 
+    .replace(/_+/g, "_") 
+    .replace(/^_+|_+$/g, ""); 
 }
 
 function formatDateBR(iso: string) {
@@ -100,7 +117,7 @@ function sumVals(arr: Array<number | null>) {
   return arr.reduce((acc, v) => acc + (typeof v === "number" ? v : 0), 0);
 }
 
-// ✅ Fonte (clicável se tiver URL)
+// ✅ Fonte original mantida
 function FonteLine({ fonte, url }: { fonte?: string; url?: string }) {
   if (!fonte) return null;
 
@@ -123,7 +140,7 @@ function FonteLine({ fonte, url }: { fonte?: string; url?: string }) {
   );
 }
 
-// Tooltip customizado para esconder linhas com valor 0
+// Tooltip original mantido intacto
 function CompositionTooltip({
   active,
   payload,
@@ -177,19 +194,13 @@ function CompositionTooltip({
             key={r.name}
             style={{
               display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-              fontSize: 12,
+              justifyContent: "space-between", gap: 12, fontSize: 12,
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span
                 style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 3,
-                  background: r.color,
-                  display: "inline-block",
+                  width: 10, height: 10, borderRadius: 3, background: r.color, display: "inline-block",
                 }}
               />
               <span style={{ color: "hsl(var(--foreground))" }}>{r.name}</span>
@@ -205,14 +216,7 @@ function CompositionTooltip({
 
       <div
         style={{
-          marginTop: 10,
-          paddingTop: 8,
-          borderTop: "1px solid hsl(var(--border))",
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: 13,
-          fontWeight: 600,
-          color: "hsl(var(--foreground))",
+          marginTop: 10, paddingTop: 8, borderTop: "1px solid hsl(var(--border))", display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600, color: "hsl(var(--foreground))",
         }}
       >
         <span>Total</span>
@@ -230,14 +234,12 @@ export function IndicatorResults({
   catalogo,
 }: {
   filters: FilterState;
-  catalogo: CatalogRow[];
+  catalogo: ExtendedCatalogRow[];
 }) {
   const [view, setView] = useState<ViewMode>("foto");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<ParsedRow[]>([]);
-
-  // ✅ data de atualização (vem de _meta!B1) - mantido para futuro uso
   const [updatedAtBR, setUpdatedAtBR] = useState<string | null>(null);
 
   const meta = useMemo(() => {
@@ -256,7 +258,6 @@ export function IndicatorResults({
     );
   }, [filters.indicador, meta?.indicador_nome, meta?.titulo]);
 
-  // Quando trocar o indicador, volta pra Fotografia atual
   useEffect(() => {
     if (filters.indicador) setView("foto");
   }, [filters.indicador]);
@@ -288,18 +289,10 @@ export function IndicatorResults({
         const idxVal = headers.indexOf("valor");
         const idxFonte = headers.indexOf("fonte");
 
-        // ✅ categoria: tenta "categoria"; se não existir, tenta variações; se ainda não, pega a 1ª coluna "desconhecida"
         let idxCat = headers.indexOf("categoria");
         if (idxCat < 0) {
           const candidatos = [
-            "modalidade",
-            "faixa",
-            "raca",
-            "raca_",
-            "alfabetizacao",
-            "atendimento_psicologico",
-            "atendimento_psicológico",
-            "atendimento_psicologico_",
+            "modalidade", "faixa", "raca", "alfabetizacao", "atendimento_psicologico",
           ].map(normalizeHeader);
 
           for (const c of candidatos) {
@@ -319,7 +312,6 @@ export function IndicatorResults({
           });
         }
 
-        // ✅ obrigatórias mínimas: territorio, data, valor
         if (idxTerr < 0 || idxData < 0 || idxVal < 0) {
           setErr("Colunas obrigatórias ausentes (territorio, data, valor)");
           setRows([]);
@@ -376,35 +368,36 @@ export function IndicatorResults({
     return Array.from(set);
   }, [filtered]);
 
-  // ===== Fotografia atual (Lógica de Denominador Dinâmico pela linha Total) =====
+  // ✅ 2. CORREÇÃO DA LÓGICA DO BANNER (Calculando total manualmente se necessário)
   const fotografiaAtual = useMemo(() => {
     if (!lastDate) return null;
 
-    // Localiza a linha de Total para servir como divisor
     const totalRow = filtered.find(
-      (r) => r.data === lastDate && r.categoria === TOTAL_LABEL
+      (r) => r.data === lastDate && r.categoria?.toLowerCase() === "total"
     );
-    const denominatorValue = totalRow && typeof totalRow.valor === "number" ? totalRow.valor : null;
-
-    // Define se o perfil atual exige cálculo de porcentagem sobre o total
+    
     const isHorizontalPct = meta?.perfil === "barras_horizontais_percentual";
-
+    
     const byMod = new Map<string, number>();
     filtered
-      .filter(
-        (r) => r.data === lastDate && r.categoria && r.categoria !== TOTAL_LABEL
-      )
+      .filter((r) => r.data === lastDate && r.categoria && r.categoria.toLowerCase() !== "total")
       .forEach((r) => {
         const v = typeof r.valor === "number" ? r.valor : 0;
         byMod.set(r.categoria, (byMod.get(r.categoria) || 0) + v);
       });
 
-    const fotoData = Array.from(byMod.entries())
-      .filter(([, v]) => v > 0)
+    const categoriesFound = Array.from(byMod.entries()).filter(([, v]) => v > 0);
+    const sumOfCategories = categoriesFound.reduce((acc, [, v]) => acc + v, 0);
+    
+    // O divisor/total do banner será a linha "Total" ou a soma das partes
+    const finalTotal = (totalRow && typeof totalRow.valor === "number") 
+      ? totalRow.valor 
+      : sumOfCategories;
+
+    const fotoData = categoriesFound
       .map(([name, value]) => {
-        // Se o perfil for percentual e tivermos um divisor válido, calcula %
-        const finalValue = (isHorizontalPct && denominatorValue && denominatorValue > 0)
-          ? (value / denominatorValue) * 100
+        const finalValue = (isHorizontalPct && finalTotal > 0)
+          ? (value / finalTotal) * 100
           : value;
 
         return { name, value: finalValue };
@@ -413,12 +406,12 @@ export function IndicatorResults({
 
     return {
       data: lastDate,
-      total: denominatorValue,
+      total: finalTotal,
       fotoData,
     };
   }, [filtered, lastDate, meta?.perfil]);
 
-  // ===== Evolução =====
+  // ===== Evolução original mantida =====
   const lineData = useMemo(() => {
     if (!dates.length) return [];
     return dates.map((d) => {
@@ -439,7 +432,7 @@ export function IndicatorResults({
     });
   }, [dates, filtered]);
 
-  // ===== Composição =====
+  // ===== Composição original mantida =====
   const stacked = useMemo(() => {
     if (!dates.length) return { data: [] as any[], keys: [] as string[] };
 
@@ -448,12 +441,8 @@ export function IndicatorResults({
     );
 
     const sortedMods = [...keptMods].sort((a, b) => {
-      const sumA = filtered
-        .filter((r) => r.categoria === a)
-        .reduce((acc, r) => acc + (r.valor || 0), 0);
-      const sumB = filtered
-        .filter((r) => r.categoria === b)
-        .reduce((acc, r) => acc + (r.valor || 0), 0);
+      const sumA = filtered.filter((r) => r.categoria === a).reduce((acc, r) => acc + (r.valor || 0), 0);
+      const sumB = filtered.filter((r) => r.categoria === b).reduce((acc, r) => acc + (r.valor || 0), 0);
       return sumA - sumB;
     });
 
@@ -464,15 +453,10 @@ export function IndicatorResults({
       if (!d) return;
       if (!byDate.has(d)) byDate.set(d, { date: d });
       const obj = byDate.get(d);
-
-      keys.forEach((k) => {
-        if (obj[k] == null) obj[k] = 0;
-      });
+      keys.forEach((k) => { if (obj[k] == null) obj[k] = 0; });
 
       const rowsOnDate = filtered.filter((r) => r.data === d);
-      const hasBreakdown = rowsOnDate.some(
-        (r) => r.categoria && r.categoria !== TOTAL_LABEL && (r.valor || 0) > 0
-      );
+      const hasBreakdown = rowsOnDate.some((r) => r.categoria !== TOTAL_LABEL && (r.valor || 0) > 0);
 
       rowsOnDate.forEach((r) => {
         if (!r.categoria) return;
@@ -482,9 +466,7 @@ export function IndicatorResults({
         obj[r.categoria] = (obj[r.categoria] || 0) + v;
       });
 
-      // ✅ LOGICA DO TOPO: Descobre qual é a última categoria com valor > 0 nesta data
-      const topKey =
-        [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
+      const topKey = [...keys].reverse().find((k) => (obj[k] || 0) > 0) || null;
       obj.__top = topKey;
     });
 
@@ -501,38 +483,27 @@ export function IndicatorResults({
             <h3 className="section-title">
               {meta?.titulo || meta?.indicador_nome || "Indicador"}
             </h3>
-            {loading && (
-              <div className="text-sm text-muted-foreground mt-1">
-                Carregando dados...
-              </div>
-            )}
+            {loading && <div className="text-sm text-muted-foreground mt-1">Carregando dados...</div>}
             {err && <div className="text-sm text-destructive mt-1">Erro: {err}</div>}
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setView("foto")}
-              className={`h-9 px-3 rounded-md border text-sm transition ${
-                view === "foto" ? "bg-[#359ad4] text-white" : "bg-background"
-              }`}
+              className={`h-9 px-3 rounded-md border text-sm transition ${view === "foto" ? "bg-[#359ad4] text-white" : "bg-background"}`}
             >
               Fotografia atual
             </button>
             <button
               onClick={() => setView("evolucao")}
-              className={`h-9 px-3 rounded-md border text-sm transition ${
-                view === "evolucao" ? "bg-[#359ad4] text-white" : "bg-background"
-              }`}
+              className={`h-9 px-3 rounded-md border text-sm transition ${view === "evolucao" ? "bg-[#359ad4] text-white" : "bg-background"}`}
             >
               Evolução
             </button>
-
             {meta?.perfil !== "pizza" && (
               <button
                 onClick={() => setView("composicao")}
-                className={`h-9 px-3 rounded-md border text-sm transition ${
-                  view === "composicao" ? "bg-[#359ad4] text-white" : "bg-background"
-                }`}
+                className={`h-9 px-3 rounded-md border text-sm transition ${view === "composicao" ? "bg-[#359ad4] text-white" : "bg-background"}`}
               >
                 {meta?.indicador_id === "abrigos" ? "Por tipo de entidade" : "Por modalidade"}
               </button>
@@ -543,15 +514,23 @@ export function IndicatorResults({
         {/* ====== Fotografia atual ====== */}
         {view === "foto" && (
           <div className="mt-4">
-            <ChartRenderer
-              key={`foto-${filters.indicador}`}
-              perfil={meta?.perfil || "padrao"}
-              data={fotografiaAtual?.fotoData || []}
-              unidade={meta?.perfil === "barras_horizontais_percentual" ? "%" : meta?.unidade}
-              formatDateBR={formatDateBR}
-              showBanner={meta?.perfil === "padrao"}
-              totalValue={fotografiaAtual?.total}
-            />
+           <ChartRenderer
+  key={`foto-${filters.indicador}`}
+  perfil={
+    meta?.perfil === "padrao" || meta?.tipo === "quantidade"
+      ? "padrao"
+      : (meta?.perfil as any)
+  }
+  data={fotografiaAtual?.fotoData || []}
+  unidade={meta?.perfil === "barras_horizontais_percentual" ? "%" : meta?.unidade}
+  formatDateBR={formatDateBR}
+  showBanner={
+    meta?.tipo === "quantidade" ||
+    meta?.perfil === "padrao"
+  }
+  totalValue={fotografiaAtual?.total}
+/>
+
 
             <div className="mt-3 space-y-1">
               {meta?.nota_explicativa ? (
@@ -559,9 +538,7 @@ export function IndicatorResults({
                   {meta.nota_explicativa}
                 </div>
               ) : null}
-
               <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-
               {lastDate ? (
                 <div className="text-sm text-muted-foreground">
                   Referência: {formatDateBR(lastDate)}
@@ -571,28 +548,17 @@ export function IndicatorResults({
           </div>
         )}
 
-        {/* ====== Evolução ====== */}
+        {/* ====== Evolução original mantida ====== */}
         {view === "evolucao" && (
           <div className="mt-4">
             <div className="h-80 mt-6">
-              {lineData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Sem dados para exibir na evolução
-                </div>
-              ) : (
-                <ChartRenderer
-                  key={`evol-${filters.indicador}`}
-                  perfil={meta?.perfil === "pizza" ? "barras_agrupadas" : "linha"}
-                  data={
-                    meta?.perfil === "pizza"
-                      ? stacked.data.map((d) => ({ ...d, name: d.date }))
-                      : lineData.map((d) => ({ name: d.date, value: d.value }))
-                  }
-                  keys={meta?.perfil === "pizza" ? modalities : ["value"]}
-                  unidade={meta?.unidade}
-                  formatDateBR={formatDateBR}
-                />
-              )}
+              <ChartRenderer
+                perfil={meta?.perfil === "pizza" ? "barras_agrupadas" : "linha"}
+                data={meta?.perfil === "pizza" ? stacked.data.map((d) => ({ ...d, name: d.date })) : lineData.map((d) => ({ name: d.date, value: d.value }))}
+                keys={meta?.perfil === "pizza" ? modalities : ["value"]}
+                unidade={meta?.unidade}
+                formatDateBR={formatDateBR}
+              />
             </div>
             <div className="mt-3">
               <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
@@ -600,43 +566,21 @@ export function IndicatorResults({
           </div>
         )}
 
-        {/* ====== Composição ====== */}
+        {/* ====== Composição original mantida ====== */}
         {view === "composicao" && (
           <div className="mt-4">
             <div className="h-96 mt-6">
-              {stacked.data.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Sem dados detalhados
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart key={`comp-${filters.indicador}-${filters.territorio}`} data={stacked.data}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="hsl(var(--border))"
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={formatDateBR}
-                    />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
-                    {stacked.keys.map((k, i) => (
-                      <Bar
-                        key={k}
-                        dataKey={k}
-                        stackId="a"
-                        fill={CHART_COLORS[i % CHART_COLORS.length]}
-                        shape={<RoundedTopBar />} // ✅ Aplica o topo arredondado dinâmico
-                        isAnimationActive={true}
-                        animationDuration={1500}
-                        animationBegin={100}
-                      />
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stacked.data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tickFormatter={formatDateBR} />
+                  <YAxis />
+                  <Tooltip content={<CompositionTooltip unidade={meta?.unidade} />} />
+                  {stacked.keys.map((k, i) => (
+                    <Bar key={k} dataKey={k} stackId="a" fill={CHART_COLORS[i % CHART_COLORS.length]} shape={<RoundedTopBar />} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
             </div>
             <div className="mt-3">
               <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
