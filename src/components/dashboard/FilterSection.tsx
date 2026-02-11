@@ -18,8 +18,8 @@ type CatalogRow = {
   indicador_nome?: string;
   fonte?: string;
   territorio?: string;
-  sheet?: string; // Adicionado para Opção B
-  range?: string; // Adicionado para Opção B
+  sheet?: string; 
+  range?: string; 
 };
 
 interface FilterSectionProps {
@@ -40,7 +40,6 @@ function uniq(arr: string[]) {
 
 export function FilterSection({ onFilterChange, filters, catalogo }: FilterSectionProps) {
   const [territorioSearch, setTerritorioSearch] = useState("");
-  // Estados para busca dinâmica de territórios
   const [dynamicTerritorios, setDynamicTerritorios] = useState<string[]>([]);
   const [loadingTerritorios, setLoadingTerritorios] = useState(false);
 
@@ -75,7 +74,6 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
     return uniq(rows.map((r) => normStr(r.fonte)));
   }, [catalog, filters.indicador]);
 
-  // Efeito para buscar territórios na aba de dados (Opção B)
   useEffect(() => {
     const meta = catalog.find((r) => normStr(r.indicador_id) === filters.indicador);
     
@@ -124,7 +122,7 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
   }, [dynamicTerritorios, territorioSearch, filters.indicador]);
 
 
-    // Efeitos de Auto-seleção
+  // Efeitos de Auto-seleção
   useEffect(() => {
     if (indicadores.length === 1 && !filters.indicador) {
       onFilterChange({ ...filters, indicador: indicadores[0].id });
@@ -140,21 +138,22 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
     }
   }, [fontes, filters, onFilterChange]);
 
+  // ✅ AJUSTE: Só seleciona automático se for EXATAMENTE 1.
   useEffect(() => {
-  if (territorios.length === 1) {
-    if (filters.territorio !== territorios[0]) {
-      onFilterChange({ ...filters, territorio: territorios[0] });
-    }
-  }
+    if (loadingTerritorios) return;
 
-  if (
-    territorios.length > 1 &&
-    filters.territorio &&
-    !territorios.includes(filters.territorio)
-  ) {
-    onFilterChange({ ...filters, territorio: null });
-  }
-}, [territorios]);
+    if (territorios.length === 1) {
+      if (filters.territorio !== territorios[0]) {
+        onFilterChange({ ...filters, territorio: territorios[0] });
+      }
+    } else if (territorios.length > 1) {
+      // Se houver mais de 1, não seleciona nada (mantém Selecione).
+      // Mas se o território atual não for mais válido para este indicador, limpa.
+      if (filters.territorio && !territorios.includes(filters.territorio)) {
+        onFilterChange({ ...filters, territorio: null });
+      }
+    }
+  }, [territorios, loadingTerritorios]);
 
 
   // Handlers
