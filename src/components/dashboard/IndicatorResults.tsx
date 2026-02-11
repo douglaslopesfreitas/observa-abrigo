@@ -560,9 +560,15 @@ export function IndicatorResults({
                 formatDateBR={formatDateBR}
               />
             </div>
-            <div className="mt-3">
-              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-            </div>
+            <div className="mt-3 space-y-1">
+  {meta?.nota_explicativa ? (
+    <div className="text-sm text-muted-foreground whitespace-pre-line">
+      {meta.nota_explicativa}
+    </div>
+  ) : null}
+
+  <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+</div>
           </div>
         )}
 
@@ -582,9 +588,16 @@ export function IndicatorResults({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-3">
-              <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
-            </div>
+           <div className="mt-3 space-y-1">
+  {meta?.nota_explicativa ? (
+    <div className="text-sm text-muted-foreground whitespace-pre-line">
+      {meta.nota_explicativa}
+    </div>
+  ) : null}
+
+  <FonteLine fonte={meta?.fonte} url={meta?.fonte_url} />
+</div>
+
           </div>
         )}
       </div>
