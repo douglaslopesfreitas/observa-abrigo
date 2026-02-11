@@ -18,7 +18,7 @@ type ExtendedCatalogRow = CatalogRow & {
   indicador_id?: string;
   indicador_nome?: string;
   fonte?: string;
-  territorio_nome?: string;
+  territorio_col?: string;
   tipo?: string;   
   perfil?: string; 
   sheet?: string;
@@ -284,7 +284,9 @@ export function IndicatorResults({
         const headers = (vals[0] || []).map(normalizeHeader);
         const body = vals.slice(1);
 
-        const idxTerr = headers.indexOf("territorio");
+       const idxTerr = meta?.territorio_col
+  ? headers.indexOf(normalizeHeader(meta.territorio_col))
+  : headers.indexOf("territorio");
         const idxData = headers.indexOf("data");
         const idxVal = headers.indexOf("valor");
         const idxFonte = headers.indexOf("fonte");
@@ -348,6 +350,7 @@ export function IndicatorResults({
 
 
   const filtered = useMemo(() => {
+    
   let base = rows;
 
   if (territorioSel) {
@@ -361,6 +364,13 @@ export function IndicatorResults({
   return base;
 }, [rows, territorioSel, filters.fonte]);
 
+const dates = useMemo(() => {
+  const ds = Array.from(
+    new Set(filtered.map((r) => r.data).filter(Boolean))
+  );
+  ds.sort();
+  return ds;
+}, [filtered]);
 
   const lastDate = dates[dates.length - 1] || "";
 
