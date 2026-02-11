@@ -11,7 +11,13 @@ type KPI = {
   changeLabel?: string;
 };
 
-export function KPICards({ data }: { data: KPI[] }) {
+// ✅ Adicionamos a prop onSelect
+interface KPICardsProps {
+  data: KPI[];
+  onSelect?: (indicadorId: string) => void;
+}
+
+export function KPICards({ data, onSelect }: KPICardsProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
       {data.map((kpi, index) => {
@@ -20,20 +26,21 @@ export function KPICards({ data }: { data: KPI[] }) {
         return (
           <div
             key={kpi.id}
+            // ✅ Adicionamos o clique e classes de hover
+            onClick={() => onSelect?.(kpi.id)}
             className={cn(
-              "rounded-2xl border bg-card shadow-sm transition-colors",
-              // compacta um pouco
-              "p-4",
-              isPrimary && "bg-gradient-to-br from-[#359AD4] to-[#175070] text-white border-transparent"
+              "rounded-2xl border bg-card shadow-sm transition-all cursor-pointer",
+              "p-4 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
+              isPrimary 
+                ? "bg-gradient-to-br from-[#359AD4] to-[#175070] text-white border-transparent" 
+                : "hover:border-[#359AD4]/50"
             )}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div
                   className={cn(
-                    "font-medium leading-tight",
-                    // menor pra caber 5
-                    "text-[13px]",
+                    "font-medium leading-tight text-[13px]",
                     isPrimary ? "text-white/90" : "text-muted-foreground"
                   )}
                 >
@@ -41,7 +48,7 @@ export function KPICards({ data }: { data: KPI[] }) {
                 </div>
 
                 <div className={cn("mt-2 flex items-end gap-2")}>
-                  <div className={cn("font-semibold leading-none", "text-3xl")}>
+                  <div className={cn("font-semibold leading-none text-3xl")}>
                     {kpi.value ?? "—"}
                   </div>
                   {kpi.unit ? (
@@ -74,12 +81,11 @@ export function KPICards({ data }: { data: KPI[] }) {
 }
 
 function KPIIcon({ id }: { id: string }) {
-  // ícones específicos pros seus 5 cards
-  if (id === "total_acolhidos") return <Users className="h-5 w-5" />;
-  if (id === "total_unidades") return <Building2 className="h-5 w-5" />;
-  if (id === "nao_alfabetizados") return <BookOpen className="h-5 w-5" />;
-  if (id === "vitimas_violencia") return <ShieldAlert className="h-5 w-5" />;
-  if (id === "sem_psico") return <Brain className="h-5 w-5" />;
+  if (id === "total_acolhidos" || id === "acolhidos") return <Users className="h-5 w-5" />;
+  if (id === "total_unidades" || id === "abrigos") return <Building2 className="h-5 w-5" />;
+  if (id === "nao_alfabetizados" || id === "educacao") return <BookOpen className="h-5 w-5" />;
+  if (id === "vitimas_violencia" || id === "violencia") return <ShieldAlert className="h-5 w-5" />;
+  if (id === "sem_psico" || id === "saude") return <Brain className="h-5 w-5" />;
 
   return <Users className="h-5 w-5" />;
 }

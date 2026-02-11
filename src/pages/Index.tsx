@@ -208,6 +208,34 @@ export default function Index() {
     setFilters(newFilters);
   }, []);
 
+  // ✅ ADIÇÃO: Função para selecionar indicador via clique nos Cards/Gráficos
+  const handleSelectIndicador = useCallback((id: string) => {
+    const mapIds: Record<string, string> = {
+      "total_acolhidos": "acolhidos",
+      "total_unidades": "abrigos",
+      "nao_alfabetizados": "educacao",
+      "vitimas_violencia": "violencia",
+      "sem_psico": "saude",
+    };
+
+    const finalId = mapIds[id] || id;
+    const item = catalogo.find(c => c.indicador_id === finalId);
+
+    setFilters({
+      area: item?.area || null,
+      indicador: finalId,
+      fonte: null,
+      territorio: null,
+    });
+
+    setTimeout(() => {
+      document.getElementById("secao-filtro")?.scrollIntoView({ 
+        behavior: "smooth",
+        block: "start"
+      });
+    }, 100);
+  }, [catalogo]);
+
   // 1) Carrega catálogo do Sheets
   useEffect(() => {
     async function loadCatalogo() {
@@ -758,11 +786,13 @@ export default function Index() {
           <h2 className="section-title px-1">
             Visão Geral do Acolhimento | Estado do Rio de Janeiro
           </h2>
-          <KPICards data={kpiData as any} />
+          {/* ✅ ADIÇÃO: onSelect para KPICards */}
+          <KPICards data={kpiData as any} onSelect={handleSelectIndicador} />
         </section>
 
         {/* 2. Explorar Indicadores */}
-        <section className="pt-2">
+        {/* ✅ ADIÇÃO: ID secao-filtro para permitir o scrollIntoView */}
+        <section id="secao-filtro" className="pt-2">
           {catalogoLoading && (
             <div className="text-sm text-muted-foreground mb-2">Carregando catálogo...</div>
           )}
@@ -784,7 +814,8 @@ export default function Index() {
           </section>
         ) : (
           <section className="animate-in fade-in duration-500">
-            <OverviewCharts />
+            {/* ✅ ADIÇÃO: onSelect para OverviewCharts */}
+            <OverviewCharts onSelect={handleSelectIndicador} />
           </section>
         )}
 
