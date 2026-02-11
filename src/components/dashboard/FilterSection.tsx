@@ -77,7 +77,8 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
       : rows;
 
     const fromCatalog = uniq(rows2.map((r) => normStr((r as any).territorio_nome)));
-    const all = fromCatalog.length ? fromCatalog : ["RJ", "Rio de Janeiro"];
+    const all = fromCatalog;
+
 
     if (!territorioSearch) return all;
     const q = territorioSearch.toLowerCase();
