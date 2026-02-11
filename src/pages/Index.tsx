@@ -214,7 +214,7 @@ export default function Index() {
       "total_acolhidos": "acolhidos",
       "total_unidades": "abrigos",
       "nao_alfabetizados": "educacao",
-      "vitimas_violencia": "violencia",
+      "vitimas_violencia": "violencia_s",
       "sem_psico": "saude",
     };
 
