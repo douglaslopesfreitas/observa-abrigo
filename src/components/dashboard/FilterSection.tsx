@@ -77,8 +77,9 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
       : rows;
 
     const fromCatalog = uniq(rows2.map((r) => normStr((r as any).territorio_nome)));
-    const all = fromCatalog;
-
+const all = fromCatalog.length
+  ? fromCatalog
+  : uniq(rows2.map((r) => normStr((r as any).territorio_nome || ""))).filter(Boolean);
 
     if (!territorioSearch) return all;
     const q = territorioSearch.toLowerCase();
