@@ -16,7 +16,7 @@ type CatalogRow = {
   indicador_id?: string;
   indicador_nome?: string;
   fonte?: string;
-  territorio_nome?: string;
+  territorio?: string;
 };
 
 interface FilterSectionProps {
@@ -72,22 +72,22 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
 const territorios = useMemo<string[]>(() => {
   if (!filters.indicador) return [];
 
-  const rows = catalog.filter(
-    (r) => normStr(r.indicador_id) === filters.indicador
-  );
-
-  const rows2 = filters.fonte
-    ? rows.filter((r) => normStr(r.fonte) === filters.fonte)
-    : rows;
+  const rows = catalog.filter((r) => {
+    if (normStr(r.indicador_id) !== filters.indicador) return false;
+    if (filters.fonte && normStr(r.fonte) !== filters.fonte) return false;
+    if (filters.area && normStr(r.area) !== filters.area) return false;
+    return true;
+  });
 
   const list = uniq(
-    rows2
-      .map((r) => normStr(r.territorio_nome))
+    rows
+      .map((r) => normStr(r.territorio))
       .filter(Boolean)
   );
 
   return list;
-}, [catalog, filters.indicador, filters.fonte]);
+}, [catalog, filters.indicador, filters.fonte, filters.area]);
+
 
     // Efeitos de Auto-seleção
   useEffect(() => {
@@ -106,10 +106,23 @@ const territorios = useMemo<string[]>(() => {
   }, [fontes, filters, onFilterChange]);
 
   useEffect(() => {
-    if (territorios.length === 1 && !filters.territorio) {
+  // Se só houver 1 território → seleciona automaticamente
+  if (territorios.length === 1) {
+    if (filters.territorio !== territorios[0]) {
       onFilterChange({ ...filters, territorio: territorios[0] });
     }
-  }, [territorios, filters, onFilterChange]);
+  }
+
+  // Se houver mais de 1 e o atual não estiver na lista → limpa
+  if (
+    territorios.length > 1 &&
+    filters.territorio &&
+    !territorios.includes(filters.territorio)
+  ) {
+    onFilterChange({ ...filters, territorio: null });
+  }
+}, [territorios]);
+
 
   // Handlers
   const handleAreaChange = (value: string) => {
