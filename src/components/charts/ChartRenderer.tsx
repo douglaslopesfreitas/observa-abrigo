@@ -186,7 +186,7 @@ export function ChartRenderer({
     );
   }
 
-  // 🔹 BARRAS EMPILHADAS
+  // 🔹 BARRAS EMPILHADAS (NOVO)
   if (perfil === "barras_empilhadas") {
     return (
       <div className="h-80 w-full">
@@ -250,7 +250,10 @@ export function ChartRenderer({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis type="number" domain={isPct ? [0, 100] : [0, "auto"]} />
+            <XAxis
+              type="number"
+              domain={isPct ? [0, 100] : [0, "auto"]}
+            />
             <YAxis type="category" dataKey="name" width={150} />
             <Tooltip />
             <Bar dataKey="value">
