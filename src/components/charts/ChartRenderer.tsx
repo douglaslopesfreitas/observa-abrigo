@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
   Legend,
+  LabelList,
   Tooltip,
 } from "recharts";
 import type { PerfilVisualizacao } from "@/types/dashboard";
@@ -48,9 +49,6 @@ interface ChartRendererProps {
   totalValue?: number;
 }
 
-/* =========================================
-   TOOLTIP PADRÃO
-========================================= */
 function SimpleTooltip({
   active,
   payload,
@@ -74,13 +72,14 @@ function SimpleTooltip({
         borderRadius: "12px",
         padding: "10px 12px",
         boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-        minWidth: 200,
+        minWidth: 180,
       }}
     >
       <div
         style={{
           fontSize: 12,
           marginBottom: 6,
+          color: "hsl(var(--foreground))",
           fontWeight: 500,
         }}
       >
@@ -93,6 +92,7 @@ function SimpleTooltip({
           style={{
             fontSize: 13,
             fontWeight: 600,
+            color: "hsl(var(--foreground))",
           }}
         >
           {p.name}:{" "}
@@ -106,16 +106,14 @@ function SimpleTooltip({
   );
 }
 
-/* =========================================
-   COMPONENTE PRINCIPAL
-========================================= */
-
 export function ChartRenderer({
   perfil = "padrao",
   data,
   keys = ["value"],
   unidade,
   formatDateBR = (d) => d,
+  showBanner = false,
+  totalValue,
 }: ChartRendererProps) {
   if (!data || data.length === 0) {
     return (
@@ -125,20 +123,21 @@ export function ChartRenderer({
     );
   }
 
-  /* ===============================
-     LINHA
-  =============================== */
+  // 🔹 LINHA
   if (perfil === "linha") {
     return (
       <div className="h-80 w-full">
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" tickFormatter={formatDateBR} />
             <YAxis />
             <Tooltip
               content={
-                <SimpleTooltip unidade={unidade} formatDateBR={formatDateBR} />
+                <SimpleTooltip
+                  unidade={unidade}
+                  formatDateBR={formatDateBR}
+                />
               }
             />
             <Line
@@ -155,13 +154,11 @@ export function ChartRenderer({
     );
   }
 
-  /* ===============================
-     BARRAS AGRUPADAS
-  =============================== */
+  // 🔹 BARRAS AGRUPADAS
   if (perfil === "barras_agrupadas") {
     return (
       <div className="h-80 w-full">
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" tickFormatter={formatDateBR} />
@@ -169,7 +166,10 @@ export function ChartRenderer({
             <Legend />
             <Tooltip
               content={
-                <SimpleTooltip unidade={unidade} formatDateBR={formatDateBR} />
+                <SimpleTooltip
+                  unidade={unidade}
+                  formatDateBR={formatDateBR}
+                />
               }
             />
             {keys.map((key, index) => (
@@ -186,32 +186,30 @@ export function ChartRenderer({
     );
   }
 
-  /* ===============================
-     🔥 BARRAS EMPILHADAS (IDÊNTICO À COMPOSIÇÃO)
-  =============================== */
+  // 🔹 BARRAS EMPILHADAS
   if (perfil === "barras_empilhadas") {
     return (
-      <div className="h-96 w-full">
-        <ResponsiveContainer>
+      <div className="h-80 w-full">
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" tickFormatter={formatDateBR} />
             <YAxis />
-            <Legend verticalAlign="bottom" height={36} />
+            <Legend />
             <Tooltip
               content={
-                <SimpleTooltip unidade={unidade} formatDateBR={formatDateBR} />
+                <SimpleTooltip
+                  unidade={unidade}
+                  formatDateBR={formatDateBR}
+                />
               }
             />
-
             {keys.map((key, index) => (
               <Bar
                 key={key}
                 dataKey={key}
                 stackId="a"
                 fill={CHART_COLORS[index % CHART_COLORS.length]}
-                isAnimationActive
-                animationDuration={1200}
               />
             ))}
           </BarChart>
@@ -220,13 +218,11 @@ export function ChartRenderer({
     );
   }
 
-  /* ===============================
-     PADRÃO
-  =============================== */
+  // 🔹 PADRÃO
   if (perfil === "padrao") {
     return (
       <div className="h-80 w-full">
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" />
@@ -243,9 +239,7 @@ export function ChartRenderer({
     );
   }
 
-  /* ===============================
-     BARRAS HORIZONTAIS
-  =============================== */
+  // 🔹 BARRAS HORIZONTAIS
   if (
     perfil === "barras_horizontais_percentual" ||
     perfil === "barras_horizontais"
@@ -253,13 +247,10 @@ export function ChartRenderer({
     const isPct = perfil === "barras_horizontais_percentual";
     return (
       <div className="h-[500px] w-full">
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              type="number"
-              domain={isPct ? [0, 100] : [0, "auto"]}
-            />
+            <XAxis type="number" domain={isPct ? [0, 100] : [0, "auto"]} />
             <YAxis type="category" dataKey="name" width={150} />
             <Tooltip />
             <Bar dataKey="value">
@@ -276,13 +267,11 @@ export function ChartRenderer({
     );
   }
 
-  /* ===============================
-     PIZZA
-  =============================== */
+  // 🔹 PIZZA
   if (perfil === "pizza") {
     return (
       <div className="h-80 w-full">
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
