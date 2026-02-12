@@ -242,10 +242,24 @@ export function IndicatorResults({
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [updatedAtBR, setUpdatedAtBR] = useState<string | null>(null);
 
-  const meta = useMemo(() => {
-    if (!filters.indicador) return null;
-    return catalogo.find((c) => c.indicador_id === filters.indicador) || null;
-  }, [filters.indicador, catalogo]);
+  const metas = useMemo(() => {
+  if (!filters.indicador) return [];
+  return catalogo.filter(
+    (c) => c.indicador_id === filters.indicador
+  );
+}, [filters.indicador, catalogo]);
+
+const meta = useMemo(() => {
+  if (!metas.length) return null;
+
+  // Se o usuário escolheu fonte
+  if (filters.fonte) {
+    return metas.find((m) => m.fonte === filters.fonte) || null;
+  }
+
+  // Se ainda não escolheu fonte, não assume nada
+  return null;
+}, [metas, filters.fonte]);
 
   const isFaixaEtaria = useMemo(() => {
     const id = String(filters.indicador || "").toLowerCase();
@@ -489,7 +503,7 @@ const dates = useMemo(() => {
   }, [dates, filtered, modalities]);
 
   // ✅ 2. Trava Principal: Se não escolheu indicador ou território, não mostra nada ainda
-  if (!filters.indicador || !filters.territorio) {
+  if (!filters.indicador || !filters.fonte || !filters.territorio) {
     return (
       <div className="h-60 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-xl gap-2">
         <p>Selecione um território para visualizar os dados</p>

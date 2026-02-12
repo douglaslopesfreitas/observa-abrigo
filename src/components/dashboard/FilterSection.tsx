@@ -74,42 +74,58 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
     return uniq(rows.map((r) => normStr(r.fonte)));
   }, [catalog, filters.indicador]);
 
-  useEffect(() => {
-    const meta = catalog.find((r) => normStr(r.indicador_id) === filters.indicador);
-    
-    if (!filters.indicador || !meta?.sheet || !meta?.range) {
-      setDynamicTerritorios([]);
-      return;
-    }
+useEffect(() => {
+  if (!filters.indicador || !filters.fonte) {
+    setDynamicTerritorios([]);
+    return;
+  }
 
-    setLoadingTerritorios(true);
-    const sheetRange = `${meta.sheet}!${meta.range}`;
+  const meta = catalog.find(
+    (r) =>
+      normStr(r.indicador_id) === filters.indicador &&
+      normStr(r.fonte) === filters.fonte
+  );
 
-    getIndicador(sheetRange)
-      .then((resp) => {
-        const vals = resp.values || [];
-        if (vals.length < 2) {
-          setDynamicTerritorios([]);
-          return;
-        }
+  if (!meta?.sheet || !meta?.range) {
+    setDynamicTerritorios([]);
+    return;
+  }
 
-        const headers = (vals[0] || []).map((h) => String(h).trim().toLowerCase());
-        const idxTerr = headers.indexOf("territorio");
+  setLoadingTerritorios(true);
 
-        if (idxTerr >= 0) {
-          const body = vals.slice(1);
-          const list = uniq(body.map((r) => String(r[idxTerr] || "").trim()));
-          setDynamicTerritorios(list);
-        } else {
-          setDynamicTerritorios([]);
-        }
-      })
-      .catch((err) => {
-        console.error("Erro ao carregar territórios dinamicamente:", err);
+  const sheetRange = `${meta.sheet}!${meta.range}`;
+
+  getIndicador(sheetRange)
+    .then((resp) => {
+      const vals = resp.values || [];
+      if (vals.length < 2) {
         setDynamicTerritorios([]);
-      })
-      .finally(() => setLoadingTerritorios(false));
-  }, [filters.indicador, catalog]);
+        return;
+      }
+
+      const headers = (vals[0] || []).map((h) =>
+        String(h).trim().toLowerCase()
+      );
+
+      const idxTerr = headers.indexOf("territorio");
+
+      if (idxTerr >= 0) {
+        const body = vals.slice(1);
+        const list = uniq(
+          body.map((r) => String(r[idxTerr] || "").trim())
+        );
+        setDynamicTerritorios(list);
+      } else {
+        setDynamicTerritorios([]);
+      }
+    })
+    .catch((err) => {
+      console.error("Erro ao carregar territórios:", err);
+      setDynamicTerritorios([]);
+    })
+    .finally(() => setLoadingTerritorios(false));
+}, [filters.indicador, filters.fonte, catalog]);
+
 
   const territorios = useMemo<string[]>(() => {
     if (!filters.indicador) return [];
@@ -280,7 +296,8 @@ export function FilterSection({ onFilterChange, filters, catalogo }: FilterSecti
           <Select
             value={filters.territorio || ""}
             onValueChange={handleTerritorioChange}
-            disabled={!filters.indicador || loadingTerritorios}
+            disabled={!filters.indicador || !filters.fonte || loadingTerritorios}
+
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder={
