@@ -96,7 +96,6 @@ function SimpleTooltip({
             color: "hsl(var(--foreground))",
           }}
         >
-          {p.name}:{" "}
           {typeof p.value === "number"
             ? p.value.toLocaleString("pt-BR")
             : p.value}
@@ -219,7 +218,7 @@ export function ChartRenderer({
     );
   }
 
-  // 🔹 PADRÃO (COM BANNER RESTAURADO)
+  // 🔹 PADRÃO
   if (perfil === "padrao") {
     return (
       <div className="flex flex-col w-full">
@@ -276,7 +275,14 @@ export function ChartRenderer({
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" domain={isPct ? [0, 100] : [0, "auto"]} />
             <YAxis type="category" dataKey="name" width={150} />
-            <Tooltip />
+            <Tooltip
+              content={
+                <SimpleTooltip
+                  unidade={unidade}
+                  formatDateBR={formatDateBR}
+                />
+              }
+            />
             <Bar dataKey="value">
               {data.map((entry, index) => (
                 <Cell
@@ -305,9 +311,6 @@ export function ChartRenderer({
               cy="50%"
               innerRadius={80}
               outerRadius={120}
-              label={({ name, percent }) =>
-                `${name}: ${(percent * 100).toFixed(1)}%`
-              }
             >
               {data.map((entry, index) => (
                 <Cell
@@ -316,6 +319,14 @@ export function ChartRenderer({
                 />
               ))}
             </Pie>
+            <Tooltip
+              content={
+                <SimpleTooltip
+                  unidade={unidade}
+                  formatDateBR={formatDateBR}
+                />
+              }
+            />
           </PieChart>
         </ResponsiveContainer>
       </div>
