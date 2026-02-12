@@ -11,7 +11,6 @@ import {
   XAxis,
   YAxis,
   Legend,
-  LabelList,
   Tooltip,
 } from "recharts";
 import type { PerfilVisualizacao } from "@/types/dashboard";
@@ -40,7 +39,9 @@ interface ChartRendererProps {
     | "barras_agrupadas"
     | "barras_empilhadas"
     | "barras_horizontais_percentual"
-    | "barras_horizontais";
+    | "barras_horizontais"
+    | "pizza"
+    | "padrao";
   data: any[];
   keys?: string[];
   unidade?: string;
@@ -186,7 +187,7 @@ export function ChartRenderer({
     );
   }
 
-  // 🔹 BARRAS EMPILHADAS (NOVO)
+  // 🔹 BARRAS EMPILHADAS
   if (perfil === "barras_empilhadas") {
     return (
       <div className="h-80 w-full">
@@ -218,23 +219,45 @@ export function ChartRenderer({
     );
   }
 
-  // 🔹 PADRÃO
+  // 🔹 PADRÃO (COM BANNER RESTAURADO)
   if (perfil === "padrao") {
     return (
-      <div className="h-80 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Bar
-              dataKey="value"
-              fill={PRIMARY_COLOR}
-              radius={[8, 8, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="flex flex-col w-full">
+        {showBanner && typeof totalValue === "number" && (
+          <div className="mb-6 rounded-xl border bg-background p-4 text-left">
+            <div className="text-4xl font-semibold tracking-tight text-foreground">
+              {totalValue.toLocaleString("pt-BR")}
+            </div>
+            {unidade && (
+              <div className="text-sm text-muted-foreground mt-1">
+                {unidade}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="h-80 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip
+                content={
+                  <SimpleTooltip
+                    unidade={unidade}
+                    formatDateBR={formatDateBR}
+                  />
+                }
+              />
+              <Bar
+                dataKey="value"
+                fill={PRIMARY_COLOR}
+                radius={[8, 8, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     );
   }
@@ -245,15 +268,13 @@ export function ChartRenderer({
     perfil === "barras_horizontais"
   ) {
     const isPct = perfil === "barras_horizontais_percentual";
+
     return (
       <div className="h-[500px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              type="number"
-              domain={isPct ? [0, 100] : [0, "auto"]}
-            />
+            <XAxis type="number" domain={isPct ? [0, 100] : [0, "auto"]} />
             <YAxis type="category" dataKey="name" width={150} />
             <Tooltip />
             <Bar dataKey="value">
