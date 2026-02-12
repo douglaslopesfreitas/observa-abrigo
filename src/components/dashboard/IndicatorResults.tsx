@@ -589,7 +589,7 @@ const dates = useMemo(() => {
           <div className="mt-4">
             <div className="h-80 mt-6">
               <ChartRenderer
-                perfil={meta?.perfil === "pizza" ? "barras_agrupadas" : "linha"}
+                perfil={meta?.perfil === "pizza" ? "barras_empilhadas" : "linha"}
                 data={meta?.perfil === "pizza" ? stacked.data.map((d) => ({ ...d, name: d.date })) : lineData.map((d) => ({ name: d.date, value: d.value }))}
                 keys={meta?.perfil === "pizza" ? modalities : ["value"]}
                 unidade={meta?.unidade}
