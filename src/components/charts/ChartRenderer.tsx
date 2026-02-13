@@ -297,41 +297,36 @@ export function ChartRenderer({
     );
   }
 
-  // 🔹 PIZZA
-  if (perfil === "pizza") {
-    return (
-      <div className="h-80 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={80}
-              outerRadius={120}
-            >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={CHART_COLORS[index % CHART_COLORS.length]}
-                />
-              ))}
-            </Pie>
-            <Tooltip
-              content={
-                <SimpleTooltip
-                  unidade={unidade}
-                  formatDateBR={formatDateBR}
-                />
-              }
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  }
-
-  return null;
+  
+ // 🔹 PIZZA
+if (perfil === "pizza") {
+  return (
+    <div className="h-80 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            innerRadius={80}
+            outerRadius={120}
+            label={({ name, value }) =>
+              `${name}: ${Number(value).toLocaleString("pt-BR")}${
+                unidade ? ` ${unidade}` : ""
+              }`
+            }
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={CHART_COLORS[index % CHART_COLORS.length]}
+              />
+            ))}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
 }
