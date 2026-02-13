@@ -335,4 +335,3 @@ if (perfil === "pizza") {
     </div>
   );
 }
-
