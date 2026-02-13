@@ -12,6 +12,7 @@ import {
   YAxis,
   Legend,
   Tooltip,
+  LabelList;
 } from "recharts";
 import type { PerfilVisualizacao } from "@/types/dashboard";
 
