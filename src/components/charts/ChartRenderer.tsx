@@ -298,8 +298,10 @@ export function ChartRenderer({
   }
 
   
- // 🔹 PIZZA
+// 🔹 PIZZA
 if (perfil === "pizza") {
+  const total = data.reduce((acc, item) => acc + Number(item.value), 0);
+
   return (
     <div className="h-80 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -312,11 +314,6 @@ if (perfil === "pizza") {
             cy="50%"
             innerRadius={80}
             outerRadius={120}
-            label={({ name, value }) =>
-              `${name}: ${Number(value).toLocaleString("pt-BR")}${
-                unidade ? ` ${unidade}` : ""
-              }`
-            }
           >
             {data.map((entry, index) => (
               <Cell
@@ -324,9 +321,18 @@ if (perfil === "pizza") {
                 fill={CHART_COLORS[index % CHART_COLORS.length]}
               />
             ))}
+
+            <LabelList
+              dataKey="value"
+              position="outside"
+              formatter={(value: number) =>
+                `${((value / total) * 100).toFixed(1)}%`
+              }
+            />
           </Pie>
         </PieChart>
       </ResponsiveContainer>
     </div>
   );
 }
+
