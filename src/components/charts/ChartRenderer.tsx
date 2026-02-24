@@ -224,36 +224,31 @@ export function ChartRenderer({
     );
   }
 
-  // 🔹 LINHA
-  if (perfil === "linha") {
-    return (
-      <div className="h-80 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" tickFormatter={formatDateBR} />
-            <YAxis />
-            <Tooltip
-              content={
-                <SimpleTooltip
-                  unidade={unidade}
-                  formatDateBR={formatDateBR}
-                />
-              }
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke={PRIMARY_COLOR}
-              strokeWidth={3}
-              dot={{ r: 5, fill: PRIMARY_COLOR, stroke: "#fff", strokeWidth: 2 }}
-              activeDot={{ r: 7 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  }
+// 🔹 LINHA
+if (perfil === "linha") {
+  return (
+    <div className="h-80 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="name" tickFormatter={formatDateBR} />
+          <YAxis />
+
+          <Tooltip content={<SimpleTooltip />} />
+
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke={PRIMARY_COLOR}
+            strokeWidth={3}
+            dot={{ r: 5, fill: PRIMARY_COLOR, stroke: "#fff", strokeWidth: 2 }}
+            activeDot={{ r: 7 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
   // 🔹 BARRAS AGRUPADAS
   if (perfil === "barras_agrupadas") {
