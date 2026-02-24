@@ -75,30 +75,36 @@ function SimpleTooltip({
     >
       {/* 🍩 CASO PIZZA */}
       {typeof total === "number" && payload.length === 1 && (() => {
-        const p = payload[0];
-        const value = Number(p?.value ?? 0);
+  const p = payload[0]
+  const value = Number(p?.payload?.value ?? p?.value ?? 0)
 
-        const percent =
-          total > 0
-            ? ((value / total) * 100).toFixed(1)
-            : "0.0";
+  const percent =
+    total > 0
+      ? ((value / total) * 100).toFixed(1)
+      : "0.0"
 
-        return (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 2,
-                backgroundColor: p?.color || p?.fill,
-              }}
-            />
-            <div style={{ fontSize: 13 }}>
-              {p?.name}: <strong>{percent}%</strong>
-            </div>
-          </div>
-        );
-      })()}
+  const color =
+  p?.payload?.fill ||
+  p?.payload?.color ||
+  p?.fill ||
+  p?.color
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 2,
+          backgroundColor: color,
+        }}
+      />
+      <div style={{ fontSize: 13 }}>
+        {p?.name}: <strong>{percent}%</strong>
+      </div>
+    </div>
+  )
+})()}
 
       {/* 📊 CASO BARRAS EMPILHADAS */}
       {payload.length > 1 &&
