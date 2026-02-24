@@ -84,62 +84,60 @@ if (total && total > 0) {
 }
 
   return (
-    <div
-      style={{
-        backgroundColor: "hsl(var(--card))",
-        border: "1px solid hsl(var(--border))",
-        borderRadius: "12px",
-        padding: "10px 12px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-        minWidth: 140,
-      }}
-    >
-      {/* Categoria com cor */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 6,
-        }}
-      >
-        <div
-          style={{
-            width: 10,
-            height: 10,
-            borderRadius: 2,
-            backgroundColor:
-  item?.payload?.fill ||
-  item?.color ||
-  item?.fill,
-          }}
-        />
-        <div
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: "hsl(var(--foreground))",
-          }}
-        >
-          {item?.payload?.name}
-        </div>
-      </div>
+  <div
+    style={{
+      backgroundColor: "hsl(var(--card))",
+      border: "1px solid hsl(var(--border))",
+      borderRadius: "12px",
+      padding: "10px 12px",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+      minWidth: 180,
+    }}
+  >
+    {payload.map((p, i) => {
+      const value = Number(p?.value ?? 0);
 
-      {/* Porcentagem */}
-      {percent && (
+      const totalStack = payload.reduce(
+        (acc, item) => acc + Number(item?.value ?? 0),
+        0
+      );
+
+      const percent =
+        totalStack > 0
+          ? ((value / totalStack) * 100).toFixed(1)
+          : "0.0";
+
+      return (
         <div
+          key={i}
           style={{
-            fontSize: 16,
-            fontWeight: 700,
-            color: "hsl(var(--foreground))",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 4,
           }}
         >
-          {percent}%
+          <div
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 2,
+              backgroundColor: p?.color || p?.fill,
+            }}
+          />
+          <div
+            style={{
+              fontSize: 13,
+              color: "hsl(var(--foreground))",
+            }}
+          >
+            {p?.name}: <strong>{percent}%</strong>
+          </div>
         </div>
-      )}
-    </div>
-  );
-}
+      );
+    })}
+  </div>
+);
 export function ChartRenderer({
   perfil = "padrao",
   data,
