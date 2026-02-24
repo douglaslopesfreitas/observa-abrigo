@@ -66,10 +66,22 @@ function SimpleTooltip({
 
   const value = Number(item?.payload?.value ?? 0);
 
-const percent =
-  total && total > 0
-    ? ((value / total) * 100).toFixed(1)
-    : null;
+let percent = null;
+
+if (total && total > 0) {
+  // Caso Pizza
+  percent = ((value / total) * 100).toFixed(1);
+} else {
+  // Caso barras empilhadas
+  const totalStack = payload.reduce(
+    (acc, p) => acc + Number(p?.value ?? 0),
+    0
+  );
+
+  if (totalStack > 0) {
+    percent = ((value / totalStack) * 100).toFixed(1);
+  }
+}
 
   return (
     <div
