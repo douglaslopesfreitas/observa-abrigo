@@ -130,7 +130,10 @@ function SimpleTooltip({
                   width: 10,
                   height: 10,
                   borderRadius: 2,
-                  backgroundColor: p?.color || p?.fill,
+                  backgroundColor:
+  p?.color ||
+  p?.fill ||
+  p?.payload?.fill,
                 }}
               />
               <div style={{ fontSize: 13 }}>
