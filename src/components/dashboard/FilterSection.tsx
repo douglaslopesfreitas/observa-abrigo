@@ -136,9 +136,15 @@ useEffect(() => {
     filtrado.map((r) => String(r[idxTerr] || "").trim())
   );
 
-  setDynamicTerritorios(list);
+ setDynamicTerritorios(list);
 })
+.catch((err) => {
+  console.error("Erro ao carregar territórios:", err);
+  setDynamicTerritorios([]);
+})
+.finally(() => setLoadingTerritorios(false));
 
+}, [filters.indicador, filters.fonte, catalog]);
 
   const territorios = useMemo<string[]>(() => {
     if (!filters.indicador) return [];
@@ -359,4 +365,5 @@ useEffect(() => {
         </div>
       </div>
     </div>
+  );
 }
