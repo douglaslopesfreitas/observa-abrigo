@@ -327,7 +327,7 @@ useEffect(() => {
                     : "Selecione"
               } />
             </SelectTrigger>
-            <SelectContent className="bg-popover z-50 max-h-64">
+            <SelectContent className="bg-popover z-50 max-h-64 overflow-y-auto">
               <div className="px-2 py-1.5 sticky top-0 bg-popover">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
