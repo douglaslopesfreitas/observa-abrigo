@@ -52,7 +52,7 @@ interface ChartRendererProps {
 }
 
 function SimpleTooltip({
-   active,
+  active,
   payload,
   label,
   total,
@@ -75,147 +75,123 @@ function SimpleTooltip({
         minWidth: 180,
       }}
     >
-      {/* 🍩 CASO PIZZA */}
-      {typeof total === "number" && payload.length === 1 && (() => {
-  const p = payload[0]
-  const value = Number(p?.payload?.value ?? p?.value ?? 0)
 
-  const percent =
-    total > 0
-      ? ((value / total) * 100).toFixed(1)
-      : "0.0"
-
-  const color =
-  p?.payload?.fill ||
-  p?.payload?.color ||
-  p?.fill ||
-  p?.color
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <div
-        style={{
-          width: 10,
-          height: 10,
-          borderRadius: 2,
-          backgroundColor: color,
-        }}
-      />
-      <div style={{ fontSize: 13 }}>
-        {p?.name}: <strong>{percent}%</strong>
-      </div>
-    </div>
-  )
-})()}
-
-{/* 📈 CASO LINHA (EVOLUÇÃO) */}
-{payload.length === 1 &&
- typeof total !== "number" &&
- label &&
- !isNaN(Date.parse(label)) &&
- (() => {
-
-  const p = payload[0]
-  const value = Number(p?.value ?? 0)
-
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: 12,
-          opacity: 0.7,
-          marginBottom: 4,
-        }}
-      >
-        {new Date(label).toLocaleDateString("pt-BR")}
-      </div>
-
-      <div
-        style={{
-          fontSize: 16,
-          fontWeight: 600,
-        }}
-      >
-        {value.toLocaleString("pt-BR")}
-      </div>
-    </div>
-  )
-})()}
-
-{/* 📊 CASO BARRA SIMPLES */}
-{payload.length === 1 &&
- typeof total !== "number" &&
- (!label || isNaN(Date.parse(label))) &&
- (() => {
-
-  const p = payload[0]
-  const value = Number(p?.value ?? 0)
-
-  const color =
-    p?.payload?.fill ||
-    p?.fill ||
-    p?.color
-   
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <div
-        style={{
-          width: 10,
-          height: 10,
-          borderRadius: 2,
-          backgroundColor: color,
-        }}
-      />
-      <div style={{ fontSize: 13 }}>
-        {p?.payload?.name}:{" "}
-        <strong>{value.toLocaleString("pt-BR")}</strong>
-      </div>
-    </div>
-  )
-})()}
-
-      {/* 📊 CASO BARRAS EMPILHADAS */}
-      {payload.length > 1 &&
-        payload.map((p, i) => {
-          const value = Number(p?.value ?? 0);
-
-          const totalStack = payload.reduce(
-            (acc, item) => acc + Number(item?.value ?? 0),
-            0
-          );
-
-          const percent =
-            totalStack > 0
-              ? ((value / totalStack) * 100).toFixed(1)
-              : "0.0";
-
-          return (
+      {/* 📊 BARRAS EMPILHADAS */}
+      {payload.length > 1 && (
+        <>
+          {label && (
             <div
-              key={i}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
+                fontSize: 12,
+                opacity: 0.7,
+                marginBottom: 6,
+              }}
+            >
+              {new Date(label).toLocaleDateString("pt-BR")}
+            </div>
+          )}
+
+          {payload
+            .filter((p) => Number(p?.value ?? 0) > 0)
+            .map((p, i) => {
+              const value = Number(p?.value ?? 0);
+
+              const totalStack = payload.reduce(
+                (acc, item) => acc + Number(item?.value ?? 0),
+                0
+              );
+
+              const percent =
+                totalStack > 0
+                  ? ((value / totalStack) * 100).toFixed(1)
+                  : "0.0";
+
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 4,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 2,
+                      backgroundColor: p?.fill || p?.color,
+                    }}
+                  />
+                  <div style={{ fontSize: 13 }}>
+                    {p?.name}: <strong>{percent}%</strong>
+                  </div>
+                </div>
+              );
+            })}
+        </>
+      )}
+
+      {/* 📈 LINHA */}
+      {payload.length === 1 &&
+        typeof total !== "number" &&
+        label &&
+        !isNaN(Date.parse(label)) && (
+          <>
+            <div
+              style={{
+                fontSize: 12,
+                opacity: 0.7,
                 marginBottom: 4,
               }}
             >
-              <div
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 2,
-                 backgroundColor: p?.fill || p?.color
-                }}
-              />
-              <div style={{ fontSize: 13 }}>
-                {p?.name}: <strong>{percent}%</strong>
-              </div>
+              {new Date(label).toLocaleDateString("pt-BR")}
             </div>
-          );
-        })}
+
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 600,
+              }}
+            >
+              {Number(payload[0]?.value ?? 0).toLocaleString("pt-BR")}
+            </div>
+          </>
+        )}
+
+      {/* 🍩 PIZZA */}
+      {typeof total === "number" && payload.length === 1 && (() => {
+        const p = payload[0];
+        const value = Number(p?.payload?.value ?? p?.value ?? 0);
+
+        const percent =
+          total > 0
+            ? ((value / total) * 100).toFixed(1)
+            : "0.0";
+
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 2,
+                backgroundColor:
+                  p?.payload?.fill || p?.fill || p?.color,
+              }}
+            />
+            <div style={{ fontSize: 13 }}>
+              {p?.name}: <strong>{percent}%</strong>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
+
+
 export function ChartRenderer({
   perfil = "padrao",
   data,
