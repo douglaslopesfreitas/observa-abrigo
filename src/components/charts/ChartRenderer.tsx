@@ -130,10 +130,7 @@ function SimpleTooltip({
                   width: 10,
                   height: 10,
                   borderRadius: 2,
-                  backgroundColor:
-  p?.color ||
-  p?.fill ||
-  p?.payload?.fill,
+                 backgroundColor: p?.fill || p?.color
                 }}
               />
               <div style={{ fontSize: 13 }}>
@@ -402,23 +399,26 @@ if (perfil === "pizza") {
 />
 
           <Pie
-            data={data}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="50%"
-            innerRadius={80}
-            outerRadius={120}
-            label={renderCustomLabel}
-            labelLine={false}
-          >
-            {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={CHART_COLORS[index % CHART_COLORS.length]}
-              />
-            ))}
-          </Pie>
+  data={data.map((item, index) => ({
+    ...item,
+    fill: CHART_COLORS[index % CHART_COLORS.length],
+  }))}
+  dataKey="value"
+  nameKey="name"
+  cx="50%"
+  cy="50%"
+  innerRadius={80}
+  outerRadius={120}
+  label={renderCustomLabel}
+  labelLine={false}
+>
+  {data.map((entry, index) => (
+    <Cell
+      key={`cell-${index}`}
+      fill={CHART_COLORS[index % CHART_COLORS.length]}
+    />
+  ))}
+</Pie>
         </PieChart>
       </ResponsiveContainer>
     </div>
