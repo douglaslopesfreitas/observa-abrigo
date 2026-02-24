@@ -107,8 +107,15 @@ useEffect(() => {
         String(h).trim().toLowerCase()
       );
 
-      const idxTerr = headers.indexOf("territorio");
-      const idxIndicador = headers.indexOf("indicador_id");
+      const idxTerr = headers.findIndex(h =>
+  h.normalize("NFD").replace(/[\u0300-\u036f]/g, "") === "territorio"
+);
+      const idxIndicador = headers.findIndex(h =>
+  h.normalize("NFD")
+   .replace(/[\u0300-\u036f]/g, "")
+   .replace(/\s+/g, "")
+   === "indicador_id"
+);
 
       if (idxTerr >= 0 && idxIndicador >= 0) {
        const body = vals.slice(1);
