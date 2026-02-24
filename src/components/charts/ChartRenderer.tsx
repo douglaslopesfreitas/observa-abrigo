@@ -88,21 +88,27 @@ function SimpleTooltip({
         {formatDateBR ? formatDateBR(String(label)) : String(label)}
       </div>
 
-      {payload.map((p, i) => (
-        <div
-          key={i}
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: "hsl(var(--foreground))",
-          }}
-        >
-          {typeof p.value === "number"
-            ? p.value.toLocaleString("pt-BR")
-            : p.value}
-          {unidade ? ` ${unidade}` : ""}
-        </div>
-      ))}
+      {payload.map((p, i) => {
+        const percent =
+          typeof p.percent === "number"
+            ? (p.percent * 100).toFixed(1)
+            : null;
+
+        if (!percent) return null;
+
+        return (
+          <div
+            key={i}
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: "hsl(var(--foreground))",
+            }}
+          >
+            {percent}%
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -353,7 +359,14 @@ const renderCustomLabel = (props: any) => {
     <div className="h-80 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-        <Tooltip/>
+        <Tooltip
+  content={
+    <SimpleTooltip
+      unidade={unidade}
+      formatDateBR={formatDateBR}
+    />
+  }
+/>
           <Pie
             data={data}
             dataKey="value"
