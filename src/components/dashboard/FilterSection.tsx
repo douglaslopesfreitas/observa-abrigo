@@ -96,27 +96,40 @@ useEffect(() => {
   const sheetRange = `${meta.sheet}!${meta.range}`;
 
   getIndicador(sheetRange)
-    .then((resp) => {
-      const vals = resp.values || [];
-      if (vals.length < 2) {
-        setDynamicTerritorios([]);
-        return;
-      }
+   .then((resp) => {
+  const vals = resp.values || [];
 
-      const headers = (vals[0] || []).map((h) =>
-        String(h).trim().toLowerCase()
-      );
+  if (vals.length < 2) {
+    setDynamicTerritorios([]);
+    return;
+  }
 
-     const idxTerr = headers.indexOf("territorio");
-const idxFonte = headers.indexOf("fonte");
+  const headers = (vals[0] || []).map((h) =>
+    String(h).trim().toLowerCase()
+  );
 
-if (idxTerr >= 0 && idxFonte >= 0) {
+  const idxTerr = headers.findIndex(h =>
+    h.normalize("NFD")
+     .replace(/[\u0300-\u036f]/g, "")
+     .trim() === "territorio"
+  );
+
+  const idxFonte = headers.findIndex(h =>
+    h.normalize("NFD")
+     .replace(/[\u0300-\u036f]/g, "")
+     .trim() === "fonte"
+  );
+
+  if (idxTerr === -1 || idxFonte === -1) {
+    setDynamicTerritorios([]);
+    return;
+  }
+
   const body = vals.slice(1);
 
-  const filtrado = body.filter(
-    (r) =>
-      String(r[idxFonte] || "").trim().toLowerCase() ===
-      normStr(filters.fonte).toLowerCase()
+  const filtrado = body.filter((r) =>
+    String(r[idxFonte] || "").trim().toLowerCase() ===
+    normStr(filters.fonte).toLowerCase()
   );
 
   const list = uniq(
@@ -124,21 +137,7 @@ if (idxTerr >= 0 && idxFonte >= 0) {
   );
 
   setDynamicTerritorios(list);
-} else {
-  setDynamicTerritorios([]);
-}
-
-setDynamicTerritorios(list);
-      } else {
-        setDynamicTerritorios([]);
-      }
-    })
-    .catch((err) => {
-      console.error("Erro ao carregar territórios:", err);
-      setDynamicTerritorios([]);
-    })
-    .finally(() => setLoadingTerritorios(false));
-}, [filters.indicador, filters.fonte, catalog]);
+})
 
 
   const territorios = useMemo<string[]>(() => {
