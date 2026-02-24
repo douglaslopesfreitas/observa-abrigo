@@ -109,7 +109,12 @@ function SimpleTooltip({
 })()}
 
 {/* 📈 CASO LINHA (EVOLUÇÃO) */}
-{payload.length === 1 && typeof total !== "number" && label && (() => {
+{payload.length === 1 &&
+ typeof total !== "number" &&
+ label &&
+ !isNaN(Date.parse(label)) &&
+ (() => {
+
   const p = payload[0]
   const value = Number(p?.value ?? 0)
 
