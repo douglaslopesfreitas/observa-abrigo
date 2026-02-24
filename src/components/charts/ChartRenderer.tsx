@@ -85,7 +85,7 @@ function SimpleTooltip({
           fontWeight: 500,
         }}
       >
-        {formatDateBR ? formatDateBR(String(label)) : String(label)}
+        {payload[0]?.name}
       </div>
 
       {payload.map((p, i) => {
