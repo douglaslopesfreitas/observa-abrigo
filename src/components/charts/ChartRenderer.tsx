@@ -143,7 +143,11 @@ function SimpleTooltip({
 })()}
 
 {/* 📊 CASO BARRA SIMPLES */}
-{payload.length === 1 && typeof total !== "number" && !label && (() => {
+{payload.length === 1 &&
+ typeof total !== "number" &&
+ (!label || isNaN(Date.parse(label))) &&
+ (() => {
+
   const p = payload[0]
   const value = Number(p?.value ?? 0)
 
@@ -163,7 +167,7 @@ function SimpleTooltip({
         }}
       />
       <div style={{ fontSize: 13 }}>
-                {p?.payload?.name}:{" "}
+        {p?.payload?.name}:{" "}
         <strong>{value.toLocaleString("pt-BR")}</strong>
       </div>
     </div>
