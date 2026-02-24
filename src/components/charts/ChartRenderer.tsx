@@ -261,6 +261,7 @@ if (perfil === "linha") {
 
   // 🔹 BARRAS AGRUPADAS
   if (perfil === "barras_agrupadas") {
+    
     return (
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
@@ -293,10 +294,18 @@ if (perfil === "linha") {
 
   // 🔹 BARRAS EMPILHADAS
   if (perfil === "barras_empilhadas") {
+    const sortedData = [...data].sort((a, b) => {
+  const parseBR = (d: string) => {
+    const [dia, mes, ano] = d.split("/");
+    return new Date(Number(ano), Number(mes) - 1, Number(dia));
+  };
+
+  return parseBR(a.name).getTime() - parseBR(b.name).getTime();
+});
     return (
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data}>
+          <BarChart data={sortedData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" tickFormatter={formatDateBR} />
             <YAxis />
