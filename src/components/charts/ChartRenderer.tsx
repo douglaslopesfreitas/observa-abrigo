@@ -105,6 +105,32 @@ function SimpleTooltip({
     </div>
   )
 })()}
+{/* 📊 CASO BARRA SIMPLES */}
+{payload.length === 1 && typeof total !== "number" && (() => {
+  const p = payload[0]
+  const value = Number(p?.value ?? 0)
+
+  const color =
+    p?.payload?.fill ||
+    p?.fill ||
+    p?.color
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 2,
+          backgroundColor: color,
+        }}
+      />
+      <div style={{ fontSize: 13 }}>
+        {p?.name}: <strong>{value}</strong>
+      </div>
+    </div>
+  )
+})()}
 
       {/* 📊 CASO BARRAS EMPILHADAS */}
       {payload.length > 1 &&
