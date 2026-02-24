@@ -142,7 +142,7 @@ else if (payload.length > 1) {
           </div>
         </div>
       );
-    })()}
+    }
 
     {/* 🔹 CASO BARRAS EMPILHADAS */}
     {payload.length > 1 &&
