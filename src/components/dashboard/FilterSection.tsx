@@ -110,11 +110,13 @@ useEffect(() => {
       const idxTerr = headers.indexOf("territorio");
       const idxIndicador = headers.indexOf("indicador_id");
 
-      if (idxTerr >= 0) {
+      if (idxTerr >= 0 && idxIndicador >= 0) {
        const body = vals.slice(1);
 
 const filtrado = body.filter(
-  (r) => String(r[idxIndicador] || "").trim() === filters.indicador
+  (r) =>
+    String(r[idxIndicador] || "").trim().toLowerCase() ===
+    normStr(meta.indicador_id).toLowerCase()
 );
 
 const list = uniq(
