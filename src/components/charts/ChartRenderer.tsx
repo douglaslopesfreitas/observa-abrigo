@@ -54,6 +54,7 @@ interface ChartRendererProps {
 function SimpleTooltip({
   active,
   payload,
+  total,
 }: {
   active?: boolean;
   payload?: any[];
