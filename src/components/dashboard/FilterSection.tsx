@@ -108,13 +108,20 @@ useEffect(() => {
       );
 
       const idxTerr = headers.indexOf("territorio");
+      const idxIndicador = headers.indexOf("indicador_id");
 
       if (idxTerr >= 0) {
-        const body = vals.slice(1);
-        const list = uniq(
-          body.map((r) => String(r[idxTerr] || "").trim())
-        );
-        setDynamicTerritorios(list);
+       const body = vals.slice(1);
+
+const filtrado = body.filter(
+  (r) => String(r[idxIndicador] || "").trim() === filters.indicador
+);
+
+const list = uniq(
+  filtrado.map((r) => String(r[idxTerr] || "").trim())
+);
+
+setDynamicTerritorios(list);
       } else {
         setDynamicTerritorios([]);
       }
