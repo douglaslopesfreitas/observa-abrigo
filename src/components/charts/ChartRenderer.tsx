@@ -52,12 +52,14 @@ interface ChartRendererProps {
 }
 
 function SimpleTooltip({
-  active,
+   active,
   payload,
+  label,
   total,
 }: {
   active?: boolean;
   payload?: any[];
+  label?: string;
   total?: number;
 }) {
   if (!active || !payload || payload.length === 0) return null;
@@ -105,6 +107,36 @@ function SimpleTooltip({
     </div>
   )
 })()}
+
+{/* 📈 CASO LINHA (EVOLUÇÃO) */}
+{payload.length === 1 && typeof total !== "number" && label && (() => {
+  const p = payload[0]
+  const value = Number(p?.value ?? 0)
+
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 12,
+          opacity: 0.7,
+          marginBottom: 4,
+        }}
+      >
+        {new Date(label).toLocaleDateString("pt-BR")}
+      </div>
+
+      <div
+        style={{
+          fontSize: 16,
+          fontWeight: 600,
+        }}
+      >
+        {value.toLocaleString("pt-BR")}
+      </div>
+    </div>
+  )
+})()}
+
 {/* 📊 CASO BARRA SIMPLES */}
 {payload.length === 1 && typeof total !== "number" && (() => {
   const p = payload[0]
