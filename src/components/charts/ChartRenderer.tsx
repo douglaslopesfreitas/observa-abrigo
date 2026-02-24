@@ -340,7 +340,8 @@ const renderCustomLabel = (props: any) => {
         fill={fill}
         textAnchor={textX > cx ? "start" : "end"}
         dominantBaseline="central"
-        fontSize={12}
+        fontSize={16}
+        fontWeight={600}
       >
         {name} ({(percent * 100).toFixed(1)}%)
       </text>
