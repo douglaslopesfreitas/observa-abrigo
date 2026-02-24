@@ -96,7 +96,10 @@ const percent =
             width: 10,
             height: 10,
             borderRadius: 2,
-                backgroundColor: item?.color || item?.fill,
+            backgroundColor:
+  item?.payload?.fill ||
+  item?.color ||
+  item?.fill,
           }}
         />
         <div
