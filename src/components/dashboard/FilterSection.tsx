@@ -110,12 +110,20 @@ useEffect(() => {
       const idxTerr = headers.findIndex(h =>
   h.normalize("NFD").replace(/[\u0300-\u036f]/g, "") === "territorio"
 );
-      const idxIndicador = headers.findIndex(h =>
-  h.normalize("NFD")
-   .replace(/[\u0300-\u036f]/g, "")
-   .replace(/\s+/g, "")
-   === "indicador_id"
-);
+
+if (idxTerr >= 0) {
+
+  const body = vals.slice(1);
+
+  const list = uniq(
+    body.map((r) => String(r[idxTerr] || "").trim())
+  );
+
+  setDynamicTerritorios(list);
+
+} else {
+  setDynamicTerritorios([]);
+}
 
       if (idxTerr >= 0 && idxIndicador >= 0) {
        const body = vals.slice(1);
