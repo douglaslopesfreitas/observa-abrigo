@@ -87,7 +87,11 @@ function SimpleTooltip({
                 marginBottom: 6,
               }}
             >
-              {new Date(label).toLocaleDateString("pt-BR")}
+              {(() => {
+  const [dia, mes, ano] = label.split("/");
+  const date = new Date(Number(ano), Number(mes) - 1, Number(dia));
+  return date.toLocaleDateString("pt-BR");
+})()}
             </div>
           )}
 
