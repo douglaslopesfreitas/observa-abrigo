@@ -62,113 +62,29 @@ function SimpleTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null;
 
-  const item = payload[0];
-
-  const value = Number(item?.payload?.value ?? 0);
-
-let percent = null;
-
-// Caso Pizza (total foi passado)
-if (typeof total === "number" && total > 0) {
-  percent = ((value / total) * 100).toFixed(1);
-}
-
-// Caso barras empilhadas
-else if (payload.length > 1) {
-  const totalStack = payload.reduce(
-    (acc, item) => acc + Number(item?.value ?? 0),
-    0
-  );
-
-  if (totalStack > 0) {
-    percent = ((value / totalStack) * 100).toFixed(1);
-  }
-}
-
   return (
-  <div
-    style={{
-      backgroundColor: "hsl(var(--card))",
-      border: "1px solid hsl(var(--border))",
-      borderRadius: "12px",
-      padding: "10px 12px",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-      minWidth: 180,
-    }}
-  >
-    {payload.map((p, i) => {
-      const value = Number(p?.value ?? 0);
-
-      const totalStack = payload.reduce(
-        (acc, item) => acc + Number(item?.value ?? 0),
-        0
-      );
-
-      const percent =
-        totalStack > 0
-          ? ((value / totalStack) * 100).toFixed(1)
-          : "0.0";
-
-      return (
-  <div
-    style={{
-      backgroundColor: "hsl(var(--card))",
-      border: "1px solid hsl(var(--border))",
-      borderRadius: "12px",
-      padding: "10px 12px",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-      minWidth: 180,
-    }}
-  >
-    {/* 🔹 CASO PIZZA */}
-    {typeof total === "number" && payload.length === 1 ? (() => {
-      const p = payload[0];
-      const value = Number(p?.value ?? 0);
-      const percent =
-        total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
-
-      return (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 2,
-              backgroundColor: p?.color || p?.fill,
-            }}
-          />
-          <div style={{ fontSize: 13 }}>
-            {p?.name}: <strong>{percent}%</strong>
-          </div>
-        </div>
-      );
-    }
-
-    {/* 🔹 CASO BARRAS EMPILHADAS */}
-    {payload.length > 1 &&
-      payload.map((p, i) => {
+    <div
+      style={{
+        backgroundColor: "hsl(var(--card))",
+        border: "1px solid hsl(var(--border))",
+        borderRadius: "12px",
+        padding: "10px 12px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+        minWidth: 180,
+      }}
+    >
+      {/* 🍩 CASO PIZZA */}
+      {typeof total === "number" && payload.length === 1 && (() => {
+        const p = payload[0];
         const value = Number(p?.value ?? 0);
 
-        const totalStack = payload.reduce(
-          (acc, item) => acc + Number(item?.value ?? 0),
-          0
-        );
-
         const percent =
-          totalStack > 0
-            ? ((value / totalStack) * 100).toFixed(1)
+          total > 0
+            ? ((value / total) * 100).toFixed(1)
             : "0.0";
 
         return (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 4,
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div
               style={{
                 width: 10,
@@ -182,9 +98,50 @@ else if (payload.length > 1) {
             </div>
           </div>
         );
-      })}
-  </div>
-);
+      })()}
+
+      {/* 📊 CASO BARRAS EMPILHADAS */}
+      {payload.length > 1 &&
+        payload.map((p, i) => {
+          const value = Number(p?.value ?? 0);
+
+          const totalStack = payload.reduce(
+            (acc, item) => acc + Number(item?.value ?? 0),
+            0
+          );
+
+          const percent =
+            totalStack > 0
+              ? ((value / totalStack) * 100).toFixed(1)
+              : "0.0";
+
+          return (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 4,
+              }}
+            >
+              <div
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  backgroundColor: p?.color || p?.fill,
+                }}
+              />
+              <div style={{ fontSize: 13 }}>
+                {p?.name}: <strong>{percent}%</strong>
+              </div>
+            </div>
+          );
+        })}
+    </div>
+  );
+}
 export function ChartRenderer({
   perfil = "padrao",
   data,
