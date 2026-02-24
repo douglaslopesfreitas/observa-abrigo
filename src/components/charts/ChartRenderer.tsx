@@ -54,24 +54,21 @@ interface ChartRendererProps {
 function SimpleTooltip({
   active,
   payload,
-  label,
-  unidade,
-  formatDateBR,
 }: {
   active?: boolean;
   payload?: any[];
-  label?: any;
-  unidade?: string;
-  formatDateBR?: (date: string) => string;
+  total?: number;
 }) {
   if (!active || !payload || payload.length === 0) return null;
 
   const item = payload[0];
 
-  const percent =
-    typeof item?.payload?.percent === "number"
-      ? (item.payload.percent * 100).toFixed(1)
-      : null;
+  const value = Number(item?.payload?.value ?? 0);
+
+const percent =
+  total && total > 0
+    ? ((value / total) * 100).toFixed(1)
+    : null;
 
   return (
     <div
@@ -81,7 +78,7 @@ function SimpleTooltip({
         borderRadius: "12px",
         padding: "10px 12px",
         boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-        minWidth: 180,
+        minWidth: 140,
       }}
     >
       {/* Categoria com cor */}
@@ -127,7 +124,6 @@ function SimpleTooltip({
     </div>
   );
 }
-
 export function ChartRenderer({
   perfil = "padrao",
   data,
@@ -374,8 +370,15 @@ if (perfil === "pizza") {
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Tooltip
-            content={<SimpleTooltip />}
-          />
+  content={
+    <SimpleTooltip
+      total={data.reduce(
+        (acc, item) => acc + Number(item.value),
+        0
+      )}
+    />
+  }
+/>
 
           <Pie
             data={data}
