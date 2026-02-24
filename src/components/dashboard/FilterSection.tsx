@@ -327,24 +327,27 @@ useEffect(() => {
                     : "Selecione"
               } />
             </SelectTrigger>
-            <SelectContent className="bg-popover z-50 max-h-64 overflow-y-auto">
-              <div className="px-2 py-1.5 sticky top-0 bg-popover">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar..."
-                    value={territorioSearch}
-                    onChange={(e) => setTerritorioSearch(e.target.value)}
-                    className="pl-8 h-9"
-                  />
-                </div>
-              </div>
-              {territorios.map((terr) => (
-                <SelectItem key={terr} value={terr} className={itemClass}>
-                  {terr}
-                </SelectItem>
-              ))}
-            </SelectContent>
+           <SelectContent className="bg-popover z-50">
+  <div className="px-2 py-2 border-b bg-popover">
+    <div className="relative">
+      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder="Buscar..."
+        value={territorioSearch}
+        onChange={(e) => setTerritorioSearch(e.target.value)}
+        className="pl-8 h-9"
+      />
+    </div>
+  </div>
+
+  <div className="max-h-60 overflow-y-auto">
+    {territorios.map((terr) => (
+      <SelectItem key={terr} value={terr} className={itemClass}>
+        {terr}
+      </SelectItem>
+    ))}
+  </div>
+</SelectContent>
           </Select>
         </div>
 
