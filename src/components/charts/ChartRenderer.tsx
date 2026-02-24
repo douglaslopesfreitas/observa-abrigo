@@ -138,7 +138,7 @@ function SimpleTooltip({
 })()}
 
 {/* 📊 CASO BARRA SIMPLES */}
-{payload.length === 1 && typeof total !== "number" && (() => {
+{payload.length === 1 && typeof total !== "number" && !label && (() => {
   const p = payload[0]
   const value = Number(p?.value ?? 0)
 
