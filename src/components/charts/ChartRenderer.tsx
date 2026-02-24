@@ -114,7 +114,7 @@ function SimpleTooltip({
     p?.payload?.fill ||
     p?.fill ||
     p?.color
-
+   
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <div
@@ -126,6 +126,7 @@ function SimpleTooltip({
         }}
       />
       <div style={{ fontSize: 13 }}>
+                {p?.payload?.name}:{" "}
         <strong>{value.toLocaleString("pt-BR")}</strong>
       </div>
     </div>
