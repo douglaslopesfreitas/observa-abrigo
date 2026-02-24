@@ -66,6 +66,13 @@ function SimpleTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null;
 
+  const item = payload[0];
+
+  const percent =
+    typeof item?.payload?.percent === "number"
+      ? (item.payload.percent * 100).toFixed(1)
+      : null;
+
   return (
     <div
       style={{
@@ -77,38 +84,46 @@ function SimpleTooltip({
         minWidth: 180,
       }}
     >
+      {/* Categoria com cor */}
       <div
         style={{
-          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
           marginBottom: 6,
-          color: "hsl(var(--foreground))",
-          fontWeight: 500,
         }}
       >
-        {payload[0]?.name}
+        <div
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: 2,
+            backgroundColor: item?.color,
+          }}
+        />
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "hsl(var(--foreground))",
+          }}
+        >
+          {item?.payload?.name}
+        </div>
       </div>
 
-      {payload.map((p, i) => {
-        const percent =
-          typeof p.percent === "number"
-            ? (p.percent * 100).toFixed(1)
-            : null;
-
-        if (!percent) return null;
-
-        return (
-          <div
-            key={i}
-            style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: "hsl(var(--foreground))",
-            }}
-          >
-            {percent}%
-          </div>
-        );
-      })}
+      {/* Porcentagem */}
+      {percent && (
+        <div
+          style={{
+            fontSize: 16,
+            fontWeight: 700,
+            color: "hsl(var(--foreground))",
+          }}
+        >
+          {percent}%
+        </div>
+      )}
     </div>
   );
 }
@@ -307,66 +322,61 @@ export function ChartRenderer({
   
 // 🔹 PIZZA
 if (perfil === "pizza") {
-  const total = data.reduce((acc, item) => acc + Number(item.value), 0);
   const RADIAN = Math.PI / 180;
 
-const renderCustomLabel = (props: any) => {
-  const {
-    cx,
-    cy,
-    midAngle,
-    outerRadius,
-    percent,
-    name,
-    fill,
-  } = props;
+  const renderCustomLabel = (props: any) => {
+    const {
+      cx,
+      cy,
+      midAngle,
+      outerRadius,
+      percent,
+      name,
+      fill,
+    } = props;
 
-  const lineRadius = outerRadius + 10;
-  const textRadius = outerRadius + 25;
+    const lineRadius = outerRadius + 10;
+    const textRadius = outerRadius + 25;
 
-  const lineX = cx + lineRadius * Math.cos(-midAngle * RADIAN);
-  const lineY = cy + lineRadius * Math.sin(-midAngle * RADIAN);
+    const lineX = cx + lineRadius * Math.cos(-midAngle * RADIAN);
+    const lineY = cy + lineRadius * Math.sin(-midAngle * RADIAN);
 
-  const textX = cx + textRadius * Math.cos(-midAngle * RADIAN);
-  const textY = cy + textRadius * Math.sin(-midAngle * RADIAN);
+    const textX = cx + textRadius * Math.cos(-midAngle * RADIAN);
+    const textY = cy + textRadius * Math.sin(-midAngle * RADIAN);
 
-  return (
-    <g>
-      <line
-        x1={lineX}
-        y1={lineY}
-        x2={textX}
-        y2={textY}
-        stroke={fill}
-        strokeWidth={1}
-      />
-      <text
-        x={textX}
-        y={textY}
-        fill={fill}
-        textAnchor={textX > cx ? "start" : "end"}
-        dominantBaseline="central"
-        fontSize={16}
-        fontWeight={600}
-      >
-        {name} ({(percent * 100).toFixed(1)}%)
-      </text>
-    </g>
-  );
-};
+    return (
+      <g>
+        <line
+          x1={lineX}
+          y1={lineY}
+          x2={textX}
+          y2={textY}
+          stroke={fill}
+          strokeWidth={1}
+        />
+        <text
+          x={textX}
+          y={textY}
+          fill={fill}
+          textAnchor={textX > cx ? "start" : "end"}
+          dominantBaseline="central"
+          fontSize={16}
+          fontWeight={600}
+        >
+          {name} ({(percent * 100).toFixed(1)}%)
+        </text>
+      </g>
+    );
+  };
 
   return (
     <div className="h-80 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-        <Tooltip
-  content={
-    <SimpleTooltip
-      unidade={unidade}
-      formatDateBR={formatDateBR}
-    />
-  }
-/>
+          <Tooltip
+            content={<SimpleTooltip />}
+          />
+
           <Pie
             data={data}
             dataKey="value"
@@ -384,13 +394,9 @@ const renderCustomLabel = (props: any) => {
                 fill={CHART_COLORS[index % CHART_COLORS.length]}
               />
             ))}
-
-            </Pie>
+          </Pie>
         </PieChart>
       </ResponsiveContainer>
     </div>
   );
-}
-
-return null;
 }
