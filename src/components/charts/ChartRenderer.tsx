@@ -138,6 +138,7 @@ if (total && total > 0) {
     })}
   </div>
 );
+}
 export function ChartRenderer({
   perfil = "padrao",
   data,
