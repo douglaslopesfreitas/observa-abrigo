@@ -331,7 +331,7 @@ const renderCustomLabel = (props: any) => {
         y1={lineY}
         x2={textX}
         y2={textY}
-        stroke="{fill}"
+        stroke={fill}
         strokeWidth={1}
       />
       <text
@@ -353,6 +353,7 @@ const renderCustomLabel = (props: any) => {
     <div className="h-80 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
+        <Tooltip/>
           <Pie
             data={data}
             dataKey="value"
