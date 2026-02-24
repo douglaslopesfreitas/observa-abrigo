@@ -126,7 +126,7 @@ function SimpleTooltip({
         }}
       />
       <div style={{ fontSize: 13 }}>
-        {p?.name}: <strong>{value}</strong>
+        <strong>{value.toLocaleString("pt-BR")}</strong>
       </div>
     </div>
   )
