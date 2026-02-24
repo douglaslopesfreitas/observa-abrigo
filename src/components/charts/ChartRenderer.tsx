@@ -400,3 +400,5 @@ if (perfil === "pizza") {
     </div>
   );
 }
+return null;
+}
