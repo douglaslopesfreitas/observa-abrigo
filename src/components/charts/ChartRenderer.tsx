@@ -302,6 +302,51 @@ export function ChartRenderer({
 // 🔹 PIZZA
 if (perfil === "pizza") {
   const total = data.reduce((acc, item) => acc + Number(item.value), 0);
+  const RADIAN = Math.PI / 180;
+
+const renderCustomLabel = (props: any) => {
+  const {
+    cx,
+    cy,
+    midAngle,
+    outerRadius,
+    percent,
+    name,
+    fill,
+  } = props;
+
+  const lineRadius = outerRadius + 10;
+  const textRadius = outerRadius + 25;
+
+  const lineX = cx + lineRadius * Math.cos(-midAngle * RADIAN);
+  const lineY = cy + lineRadius * Math.sin(-midAngle * RADIAN);
+
+  const textX = cx + textRadius * Math.cos(-midAngle * RADIAN);
+  const textY = cy + textRadius * Math.sin(-midAngle * RADIAN);
+
+  return (
+    <g>
+      <line
+        x1={lineX}
+        y1={lineY}
+        x2={textX}
+        y2={textY}
+        stroke="{fill}"
+        strokeWidth={1}
+      />
+      <text
+        x={textX}
+        y={textY}
+        fill={fill}
+        textAnchor={textX > cx ? "start" : "end"}
+        dominantBaseline="central"
+        fontSize={12}
+      >
+        {name} ({(percent * 100).toFixed(1)}%)
+      </text>
+    </g>
+  );
+};
 
   return (
     <div className="h-80 w-full">
@@ -315,6 +360,8 @@ if (perfil === "pizza") {
             cy="50%"
             innerRadius={80}
             outerRadius={120}
+            label={renderCustomLabel}
+            labelLine={false}
           >
             {data.map((entry, index) => (
               <Cell
@@ -323,14 +370,7 @@ if (perfil === "pizza") {
               />
             ))}
 
-            <LabelList
-              dataKey="value"
-              position="outside"
-              formatter={(value: number) =>
-                `${((value / total) * 100).toFixed(1)}%`
-              }
-            />
-          </Pie>
+            </Pie>
         </PieChart>
       </ResponsiveContainer>
     </div>
