@@ -107,36 +107,26 @@ useEffect(() => {
         String(h).trim().toLowerCase()
       );
 
-      const idxTerr = headers.findIndex(h =>
-  h.normalize("NFD").replace(/[\u0300-\u036f]/g, "") === "territorio"
-);
+     const idxTerr = headers.indexOf("territorio");
+const idxFonte = headers.indexOf("fonte");
 
-if (idxTerr >= 0) {
-
+if (idxTerr >= 0 && idxFonte >= 0) {
   const body = vals.slice(1);
 
+  const filtrado = body.filter(
+    (r) =>
+      String(r[idxFonte] || "").trim().toLowerCase() ===
+      normStr(filters.fonte).toLowerCase()
+  );
+
   const list = uniq(
-    body.map((r) => String(r[idxTerr] || "").trim())
+    filtrado.map((r) => String(r[idxTerr] || "").trim())
   );
 
   setDynamicTerritorios(list);
-
 } else {
   setDynamicTerritorios([]);
 }
-
-      if (idxTerr >= 0 && idxIndicador >= 0) {
-       const body = vals.slice(1);
-
-const filtrado = body.filter(
-  (r) =>
-    String(r[idxIndicador] || "").trim().toLowerCase() ===
-    normStr(meta.indicador_id).toLowerCase()
-);
-
-const list = uniq(
-  filtrado.map((r) => String(r[idxTerr] || "").trim())
-);
 
 setDynamicTerritorios(list);
       } else {
