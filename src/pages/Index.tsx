@@ -694,12 +694,7 @@ export default function Index() {
       value: null,
       unit: "",
     },
-    {
-      id: "sem_psico",
-      label: "Sem acompanhamento psicológico individualizado",
-      value: null,
-      unit: "",
-    },
+    
   ];
 
   const kpiData = useMemo(() => {
