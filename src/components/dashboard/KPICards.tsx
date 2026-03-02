@@ -19,7 +19,7 @@ interface KPICardsProps {
 
 export function KPICards({ data, onSelect }: KPICardsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {data.map((kpi, index) => {
         const isPrimary = index === 0;
 
