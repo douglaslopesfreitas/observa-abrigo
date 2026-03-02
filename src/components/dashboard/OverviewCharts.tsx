@@ -321,7 +321,7 @@ export function OverviewCharts({ onSelect }: { onSelect?: (id: string) => void }
   const clickableClass = "chart-container animate-fade-in cursor-pointer transition-all hover:border-[#359AD4]/50 hover:shadow-md active:scale-[0.99]";
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* 1. Evolução do Acolhimento */}
       {evolutionData.length === 0 ? (
         <EmptyState title="Evolução do Acolhimento" />
