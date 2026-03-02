@@ -85,7 +85,7 @@ function KPIIcon({ id }: { id: string }) {
   if (id === "total_unidades" || id === "abrigos") return <Building2 className="h-5 w-5" />;
   if (id === "nao_alfabetizados" || id === "educacao") return <BookOpen className="h-5 w-5" />;
   if (id === "vitimas_violencia" || id === "violencia") return <ShieldAlert className="h-5 w-5" />;
-  if (id === "sem_psico" || id === "saude") return <Brain className="h-5 w-5" />;
+  
 
   return <Users className="h-5 w-5" />;
 }
